@@ -1,0 +1,25 @@
+{
+  "name": "recall",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A chat agent that remembers past conversations and checks what changed on the web since.",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "start": "tsx --env-file-if-exists=.env src/server.ts",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc",
+    "probe:search": "tsx --env-file-if-exists=.env scripts/probe-search.ts",
+    "check:models": "tsx --env-file-if-exists=.env scripts/check-models.ts",
+    "ping:model": "tsx --env-file-if-exists=.env scripts/ping-model.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^3.2.0",
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

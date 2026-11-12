@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recall</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar" aria-label="Chat history">
+      <div class="brand">Recall</div>
+      <button id="new-chat" type="button">+ New chat</button>
+      <nav id="history" aria-label="Recent chats"></nav>
+    </aside>
+    <div id="scrim"></div>
+
+    <section id="main" class="empty">
+      <header>
+        <button id="menu" type="button" aria-label="Show chat history">☰</button>
+      </header>
+
+      <div id="landing">
+        <h1 id="greeting">Hello</h1>
+        <p>I remember what we've talked about, check the web, and tell you what's changed.</p>
+      </div>
+
+      <main id="log" aria-live="polite"></main>
+
+      <form id="form">
+        <textarea id="input" rows="1" placeholder="Ask anything…" autofocus></textarea>
+        <button id="send" type="submit" aria-label="Send">↑</button>
+      </form>
+
+      <div id="chips"></div>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
