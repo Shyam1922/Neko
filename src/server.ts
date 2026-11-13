@@ -28,5 +28,5 @@ const app = createApp({ store, llm, search, profile, publicDir: path.join(root, 
 
 app.listen(config.port, () => {
   // Last 4 characters only: enough to confirm which key the server loaded.
-  console.log(`Recall on http://localhost:${config.port}  model=${config.model}  key=...${config.geminiApiKey.slice(-4)}`);
+  console.log(`Neko on http://localhost:${config.port}  model=${config.model}  key=...${config.geminiApiKey.slice(-4)}`);
 });

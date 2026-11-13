@@ -24,7 +24,7 @@ export async function connectSearch(cfg: SearchConfig): Promise<Client> {
   const transport = new StreamableHTTPClientTransport(new URL(cfg.url), {
     requestInit: cfg.apiKey ? { headers: { Authorization: `Bearer ${cfg.apiKey}` } } : undefined,
   });
-  const client = new Client({ name: "recall", version: "0.1.0" });
+  const client = new Client({ name: "neko", version: "0.1.0" });
   await client.connect(transport);
   return client;
 }

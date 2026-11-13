@@ -1,4 +1,4 @@
-/* Recall: muted botanical. Flat surfaces, sage and moss, one clay accent, sharp 8px corners. Light and dark.
+/* Neko: muted botanical. Flat surfaces, sage and moss, one clay accent, sharp 8px corners. Light and dark.
    The theme is set on <html data-theme="light|dark"> (see the script in index.html and app.js). */
 :root {
   color-scheme: light;
@@ -97,7 +97,7 @@ textarea::placeholder { color: var(--muted); }
 .b-unv { background: var(--b-unv-bg); color: var(--b-unv-fg); }
 .b-none { background: var(--b-none-bg); color: var(--b-none-fg); }
 
-/* ---- profile panel: appearance + what Recall remembers ---- */
+/* ---- profile panel: appearance + what Neko remembers ---- */
 #profile-dialog, #about-dialog { width: min(480px, calc(100vw - 32px)); max-height: 82vh; overflow-y: auto; padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--fg); }
 #profile-dialog::backdrop, #about-dialog::backdrop { background: rgb(0 0 0 / 0.5); }
 #profile-close, #about-close { border: 0; background: transparent; font-size: 22px; line-height: 1; padding: 2px 8px; color: var(--muted); }
@@ -109,7 +109,7 @@ textarea::placeholder { color: var(--muted); }
 .features .badge { font-size: 11px; margin-right: 2px; }
 .link-btn { order: 4; display: none; width: min(680px, calc(100% - 40px)); margin: 8px 0 0; padding: 0; border: 0; background: transparent; color: var(--link); font-size: 13.5px; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 #main.empty .link-btn { display: block; }
-/* the "What can Recall do?" pill in the top bar: a soft accent tint and a sparkle, so it invites a click */
+/* the "What can Neko do?" pill in the top bar: a soft accent tint and a sparkle, so it invites a click */
 .pill-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 10px; border-radius: var(--r); border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--fg); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .pill-btn svg { color: var(--accent); }
 .pill-btn:hover { background: color-mix(in srgb, var(--accent) 26%, transparent); }

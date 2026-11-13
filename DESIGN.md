@@ -1,6 +1,6 @@
-# Recall: design
+# Neko: design
 
-Recall is a chat agent whose one tool is web search. It does what ordinary chatbots can't: connect an earlier conversation to what has changed since ("Has any of those tools changed pricing since Monday?"), and be honest about what it cannot compare.
+Neko is a chat agent whose one tool is web search. It does what ordinary chatbots can't: connect an earlier conversation to what has changed since ("Has any of those tools changed pricing since Monday?"), and be honest about what it cannot compare.
 
 ## How it works
 
@@ -9,7 +9,7 @@ One turn: **route → memory lookup → (claims → search → compare) → answ
 1. **Router** (1 model call, structured output) classifies the turn (chat, research, memory, memory+research) and copies out the user's time words and topic. Bad output falls back to plain research, so the worst case is an ordinary search chatbot.
 2. **Memory lookup** (code). "Last Tuesday" becomes ranked candidate days in the timezone stored with each message; conversations from those days are scored by topic. Result: one match, several (reported with times), a real ambiguity (a concrete question), or no record.
 3. **Then versus now.** The model reads the old answers into claims; code keeps a claim only if its quote really appears in the stored message. One search per product, then the model proposes current values with quotes. Code keeps a value only if the quote is in that page and the number is in the quote, requires like-for-like (plan, billing period, unit), and computes the verdict: **changed / unchanged / couldn't verify / no baseline**.
-4. **No record is not a dead end.** "Has pricing changed since last Tuesday?" can be answered from the web alone, so without a stored baseline Recall says so first, then searches what changed after the date code resolved.
+4. **No record is not a dead end.** "Has pricing changed since last Tuesday?" can be answered from the web alone, so without a stored baseline Neko says so first, then searches what changed after the date code resolved.
 5. **Answer** (1 model call, streamed) receives only verified findings and has no search tool in that case, so it cannot add unverified ones. "That's wrong" excludes the recalled chat and retries; after a second miss it asks a concrete question.
 
 Facts the user states about themselves ("I prefer short answers") are picked out by the same router call and kept only as verbatim quotes, so personalisation costs no extra call. Because they are saved automatically, a panel lets the user see, correct and delete every one. All data is local: conversations and the profile live in `data/`, and only model and search calls leave the machine.

@@ -1,18 +1,18 @@
-# Recall
+# Neko
 
 A chat agent that **remembers your past conversations, checks the live web, and tells you what changed since** — and says so plainly when it can't compare, instead of guessing.
 
-Most chatbots can search the web, but they can't connect *"what you asked me last Tuesday"* to *"what's true today"*. Recall can:
+Most chatbots can search the web, but they can't connect *"what you asked me last Tuesday"* to *"what's true today"*. Neko can:
 
 > **You:** Earlier today I asked you about Neon pricing. Has anything changed since then?
 >
-> **Recall:** The monthly base fee, storage rate, and data egress allowance for Neon's Launch plan are unchanged since earlier today (…from a web search), but compute, instant restore, and extra branch rates **could not be verified**.
+> **Neko:** The monthly base fee, storage rate, and data egress allowance for Neon's Launch plan are unchanged since earlier today (…from a web search), but compute, instant restore, and extra branch rates **could not be verified**.
 
-![Recall landing screen in the light theme: a headline, one input box, a line showing how much it remembers, chat history on the left and your profile top-right](docs/screenshots/landing.jpg)
+![Neko landing screen in the light theme: a headline, one input box, a line showing how much it remembers, chat history on the left and your profile top-right](docs/screenshots/landing.jpg)
 
 ## What it does
 
-| You ask | What Recall does |
+| You ask | What Neko does |
 | --- | --- |
 | "What does Neon charge for Postgres hosting?" | Searches the web and answers with clickable source links. |
 | "Has any of that changed since I asked on Monday?" | Finds that earlier conversation, re-checks each fact, and reports **changed / unchanged / couldn't verify / no baseline**, with sources. If there is no record of that chat, it says so first, then searches what changed on the web since that date. |
@@ -21,9 +21,9 @@ Most chatbots can search the web, but they can't connect *"what you asked me las
 | "I'm Alex, I'm based in Lisbon and I prefer short answers" | Remembers it, tailors this and every later answer to you, and greets you by name. See [Personalisation](#personalisation). |
 | "What is the capital of France?" | Answers directly. No search, no memory lookup. |
 
-You don't need to read this to find out: the app explains itself. **What can Recall do?** (a link under the input on the landing screen, and the sparkle button in the top bar) lists the features in plain language.
+You don't need to read this to find out: the app explains itself. **What can Neko do?** (a link under the input on the landing screen, and the sparkle button in the top bar) lists the features in plain language.
 
-![The "What Recall can do for you" panel, in the dark theme](docs/screenshots/features.jpg)
+![The "What Neko can do for you" panel, in the dark theme](docs/screenshots/features.jpg)
 
 Every answer sits in a card with its evidence underneath: how long it took, how many searches ran, and which sites they returned.
 
@@ -33,18 +33,18 @@ Then-versus-now results show each verdict as a badge (**Changed**, **Unchanged**
 
 ![A then-versus-now check with verdict badges, in the dark theme](docs/screenshots/then-vs-now.jpg)
 
-The worst failure for an assistant like this is **inventing a past that never happened**, so Recall never does: a baseline must be a verbatim quote from a stored message, and a current value must be a verbatim quote from a real search result. If it can't prove it, it says "no record" or "couldn't verify".
+The worst failure for an assistant like this is **inventing a past that never happened**, so Neko never does: a baseline must be a verbatim quote from a stored message, and a current value must be a verbatim quote from a real search result. If it can't prove it, it says "no record" or "couldn't verify".
 
 ## Personalisation
 
-Recall remembers what you tell it about yourself and uses it to tailor answers:
+Neko remembers what you tell it about yourself and uses it to tailor answers:
 
 - **Facts you state** ("I'm Alex", "I'm a freelance designer", "my budget is 500 a month", "I'm based in Lisbon", "I prefer short answers") are saved automatically and used in every later chat, so you never repeat them. It also greets you by name.
-- **Local context.** A saved currency or region steers how prices are shown. Recall never converts currencies from memory: if a source only gives another currency, it shows that and says so.
+- **Local context.** A saved currency or region steers how prices are shown. Neko never converts currencies from memory: if a source only gives another currency, it shows that and says so.
 - **Tone and format.** A stated preference for short answers, bullets or detail is followed.
-- **You stay in control.** Under each reply Recall says what it just remembered, with **Undo**. The **profile button** (top-right: your name and initial, or an icon until it knows your name) opens **Your profile**. It lists every saved fact, so you can check what it learned, correct a value, delete one, or forget everything. The same panel has the **Appearance** switch: Light, Dark, or System (follow your device). The theme choice is kept in your browser. Everything else stays on your machine: nothing leaves it except the model and search calls.
+- **You stay in control.** Under each reply Neko says what it just remembered, with **Undo**. The **profile button** (top-right: your name and initial, or an icon until it knows your name) opens **Your profile**. It lists every saved fact, so you can check what it learned, correct a value, delete one, or forget everything. The same panel has the **Appearance** switch: Light, Dark, or System (follow your device). The theme choice is kept in your browser. Everything else stays on your machine: nothing leaves it except the model and search calls.
 
-![Your profile panel: the theme switch (Light, Dark, System) and what Recall remembers about you](docs/screenshots/profile.jpg)
+![Your profile panel: the theme switch (Light, Dark, System) and what Neko remembers about you](docs/screenshots/profile.jpg)
 
 How it stays trustworthy: nothing is inferred. The router that already reads each message proposes facts you stated, and code keeps one only if it is a **verbatim quote** from your message, is short, and does not look like a secret, an email or an ID number (passwords, API keys, card or phone numbers and health details are never stored). That costs **no extra model call**. Facts live in `data/profile/facts.json` on your machine (git-ignored); a newer statement replaces an older one for the same key.
 
@@ -84,7 +84,7 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | `npm run check:models` | Lists the models your key can call |
 | `npm run probe:search` | Connects to the search server and prints its tools and a sample result |
 
-**Troubleshooting.** If the configured model isn't available for your key, Recall switches to the newest flash-lite model your key can use and logs the switch; to choose one yourself, pick from `npm run check:models` and set `GEMINI_MODEL`. Free-tier rate limits and Google's occasional "high demand" errors are retried automatically and otherwise shown with Google's own reason.
+**Troubleshooting.** If the configured model isn't available for your key, Neko switches to the newest flash-lite model your key can use and logs the switch; to choose one yourself, pick from `npm run check:models` and set `GEMINI_MODEL`. Free-tier rate limits and Google's occasional "high demand" errors are retried automatically and otherwise shown with Google's own reason.
 
 ## How it works
 
@@ -128,7 +128,7 @@ src/
     store.ts           one JSON file per conversation
     dates.ts           "last Tuesday" -> ranked candidate days (injectable clock)
     recall.ts          find the conversation you mean
-    profile.ts         the facts you told Recall about yourself (viewable, editable)
+    profile.ts         the facts you told Neko about yourself (viewable, editable)
 public/                the chat page: landing, answer cards, verdict badges, history (no build step; light and dark themes)
 scripts/               ping-model, check-models, probe-search
 test/                  unit tests with fake models and a fake search

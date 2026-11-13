@@ -145,7 +145,7 @@ export function createApp({ store, llm, search, profile, publicDir, now = () => 
         const conv = await store.get(m[1]);
         return conv ? sendJson(res, 200, conv) : sendJson(res, 404, { error: "Conversation not found" });
       }
-      // What Recall knows about the user: visible, editable, deletable.
+      // What Neko knows about the user: visible, editable, deletable.
       if (pathname === "/api/profile") {
         if (req.method === "GET") return sendJson(res, 200, await profile.list());
         if (req.method === "DELETE") return await profile.clear(), sendJson(res, 200, { ok: true });

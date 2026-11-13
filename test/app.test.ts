@@ -108,7 +108,7 @@ test("conversation endpoints and static files work; path traversal is blocked", 
   assert.equal((await (await fetch(`${base}/api/conversations`)).json()).length, 1);
   assert.equal((await (await fetch(`${base}/api/conversations/${id}`)).json()).messages.length, 2);
   assert.equal((await fetch(`${base}/api/conversations/nope`)).status, 404);
-  assert.match(await (await fetch(`${base}/`)).text(), /<title>Recall<\/title>/);
+  assert.match(await (await fetch(`${base}/`)).text(), /<title>Neko<\/title>/);
   assert.equal((await fetch(`${base}/..%2Fpackage.json`)).status, 404);
   close();
 });

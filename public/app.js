@@ -28,7 +28,7 @@ function render(text) {
     .replace(/`([^`\n]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
     .replace(/(^|[^*\w])\*([^*\s][^*\n]*?)\*(?![*\w])/g, "$1<em>$2</em>")
-    // The four verdicts Recall reports are shown as badges, so a then-versus-now answer reads at a glance.
+    // The four verdicts Neko reports are shown as badges, so a then-versus-now answer reads at a glance.
     .replace(/\b(COULD NOT VERIFY|NO BASELINE|UNCHANGED|CHANGED)\b/g, (v) => {
       const [cls, label] = { CHANGED: ["b-changed", "Changed"], UNCHANGED: ["b-same", "Unchanged"], "COULD NOT VERIFY": ["b-unv", "Couldn't verify"], "NO BASELINE": ["b-none", "No baseline"] }[v];
       return `<span class="badge ${cls}">${label}</span>`;
@@ -38,7 +38,7 @@ function render(text) {
 // ---- theme: light, dark, or follow the system ----------------------------------------------
 // The choice lives in this browser only (localStorage). index.html applies it before first paint.
 
-const THEME_KEY = "recall-theme";
+const THEME_KEY = "neko-theme";
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 
 function themePref() {
@@ -80,7 +80,7 @@ function greeting() {
 }
 const updateGreeting = () => ($("greeting").textContent = greeting());
 
-// The profile button: your initial (or a person icon until Recall knows your name) and how much it remembers.
+// The profile button: your initial (or a person icon until Neko knows your name) and how much it remembers.
 const PERSON_ICON =
   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
 // Top bar title (the open chat) and the memory line on the landing screen.
@@ -335,7 +335,7 @@ function addMessage(role, text, at, extra) {
   const lbl = document.createElement("div");
   lbl.className = "lbl";
   const who = document.createElement("span");
-  who.textContent = role === "user" ? "You" : "Recall";
+  who.textContent = role === "user" ? "You" : "Neko";
   const time = document.createElement("time");
   time.textContent = timeLabel(d);
   lbl.append(who, time);
@@ -471,7 +471,7 @@ for (const b of document.querySelectorAll("#theme-seg button")) b.addEventListen
 $("open-profile").addEventListener("click", openProfile);
 $("profile-close").addEventListener("click", () => dialog.close());
 
-// "What does Recall do for you?": a plain list of what it can do, from the landing screen or the "?" in the top bar.
+// "What does Neko do for you?": a plain list of what it can do, from the landing screen or the "?" in the top bar.
 const about = $("about-dialog");
 for (const id of ["open-about", "open-about-top"]) $(id).addEventListener("click", () => about.showModal());
 $("about-close").addEventListener("click", () => about.close());

@@ -16,7 +16,7 @@ export function buildSystemPrompt(now: Date, tz: string, profile: ProfileFact[] 
     hour12: false,
   }).format(now);
   const lines = [
-    "You are Recall, a concise, honest research assistant.",
+    "You are Neko, a concise, honest research assistant.",
     `Current date and time: ${when} (${zone}).`,
     "Lead with the bottom line, then the detail.",
     "Answer timeless or simple questions directly without searching.",
