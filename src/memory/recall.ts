@@ -149,7 +149,9 @@ export function recall(query: RecallQuery, conversations: Conversation[]): Recal
 }
 
 function noRecord(query: RecallQuery, nearMatches: Hit[]): RecallResult {
-  const when = query.phrase ? ` for ${query.phrase}` : "";
+  // Name the day code resolved ("from Tue 10 Nov"), not the user's raw words ("Last Tuesday").
+  const day = query.phrase ? resolveTimePhrase(query.phrase, query.now, query.tz)[0] : undefined;
+  const when = day ? ` from ${day.label}` : "";
   const what = query.topic ? ` about ${query.topic}` : "";
   const near = nearMatches[0];
   return {

@@ -11,6 +11,7 @@ const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 let conversationId; // the open chat; also kept in the URL hash so a reload reopens it
 let lastDay = null;
 let conversations = []; // summaries for the sidebar, newest first
+let profile = []; // facts the user has told us about themselves
 
 const dayLabel = (d) => d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const timeLabel = (d) => d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
@@ -34,9 +35,11 @@ function render(text) {
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  const hello = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  const name = profile.find((f) => f.key === "name")?.value; // only if the user told us their name
+  return name ? `${hello}, ${name}` : hello;
 }
-$("greeting").textContent = greeting();
+const updateGreeting = () => ($("greeting").textContent = greeting());
 
 const setEmpty = (empty) => main.classList.toggle("empty", empty);
 
@@ -115,6 +118,104 @@ async function loadHistory() {
   renderChips();
 }
 
+// ---- "What I know about you": visible, editable, deletable ---------------------------------
+
+const dialog = $("profile-dialog");
+const labelOf = (key) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+async function loadProfile() {
+  try {
+    const res = await fetch("/api/profile");
+    if (res.ok) profile = await res.json();
+  } catch {
+    /* personalisation is optional; the app works without it */
+  }
+  updateGreeting();
+  if (dialog.open) renderProfile();
+}
+
+function profileError(msg) {
+  const el = $("profile-error");
+  el.hidden = !msg;
+  el.textContent = msg || "";
+}
+
+function renderProfile() {
+  const list = $("profile-list");
+  list.textContent = "";
+  profileError("");
+  $("profile-clear").hidden = profile.length === 0;
+  if (!profile.length) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "Nothing yet. Tell me about yourself in a chat, for example \"I'm Alex and I run sales for a 20-person team\", and I'll remember it, or add something below.";
+    list.appendChild(p);
+    return;
+  }
+  for (const f of profile) {
+    const row = document.createElement("div");
+    row.className = "pf-row";
+    const key = document.createElement("span");
+    key.className = "pf-key";
+    key.textContent = labelOf(f.key);
+    const input = document.createElement("input");
+    input.value = f.value;
+    input.maxLength = 120;
+    input.setAttribute("aria-label", labelOf(f.key));
+    input.addEventListener("change", async () => {
+      const res = await fetch(`/api/profile/${encodeURIComponent(f.id)}`, { method: "PUT", body: JSON.stringify({ value: input.value }) });
+      if (!res.ok) {
+        profileError((await res.json().catch(() => ({}))).error || "Couldn't save that.");
+        input.value = f.value; // put the old value back
+        return;
+      }
+      await loadProfile();
+    });
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "pf-del";
+    del.setAttribute("aria-label", `Forget ${labelOf(f.key)}`);
+    del.textContent = "×";
+    del.addEventListener("click", async () => {
+      await fetch(`/api/profile/${encodeURIComponent(f.id)}`, { method: "DELETE" });
+      await loadProfile();
+    });
+    row.append(key, input, del);
+    list.appendChild(row);
+  }
+}
+
+function openProfile() {
+  renderProfile();
+  dialog.showModal();
+}
+
+// Under a reply: say what was just remembered, so nothing is saved silently.
+function showRemembered(wrap, saved) {
+  if (!saved.length) return;
+  const note = document.createElement("div");
+  note.className = "note";
+  note.append(`✓ ${saved.some((s) => s.previous) ? "Updated" : "Remembered"}: ${saved.map((s) => `${labelOf(s.key)} = ${s.value}`).join(" · ")}`);
+  const fresh = saved.filter((s) => s.previous === undefined); // undoing an update would lose the old value, so only new facts get Undo
+  if (fresh.length) {
+    const undo = document.createElement("button");
+    undo.type = "button";
+    undo.textContent = "Undo";
+    undo.addEventListener("click", async () => {
+      await Promise.all(fresh.map((s) => fetch(`/api/profile/${encodeURIComponent(s.id)}`, { method: "DELETE" })));
+      note.textContent = "Forgotten.";
+      await loadProfile();
+    });
+    note.append(undo);
+  }
+  const manage = document.createElement("button");
+  manage.type = "button";
+  manage.textContent = "Manage";
+  manage.addEventListener("click", openProfile);
+  note.append(manage);
+  wrap.appendChild(note);
+}
+
 // ---- messages ----------------------------------------------------------------------------
 
 function addMessage(role, text, at) {
@@ -172,6 +273,7 @@ async function submit(text) {
   addMessage("user", text);
   const bubble = addMessage("assistant", "Thinking…");
   let reply = "";
+  let remembered = [];
   send.disabled = true;
   try {
     const res = await fetch("/api/chat", {
@@ -196,6 +298,8 @@ async function submit(text) {
         if (event === "meta") {
           conversationId = data.conversationId;
           setHash(conversationId);
+        } else if (event === "profile") {
+          remembered = data.saved;
         } else if (event === "status") {
           if (!reply) bubble.textContent = data.text;
         } else if (event === "searching") {
@@ -209,6 +313,7 @@ async function submit(text) {
         }
       }
     }
+    showRemembered(bubble.parentElement, remembered);
   } catch (err) {
     bubble.parentElement.className = "msg error";
     bubble.textContent = err.message;
@@ -216,6 +321,7 @@ async function submit(text) {
     send.disabled = false;
     input.focus();
     loadHistory(); // the chat now exists (or has a new message): refresh the sidebar
+    loadProfile(); // and the router may have learned something about the user
   }
 }
 
@@ -240,13 +346,34 @@ input.addEventListener("input", () => {
   input.style.height = `${input.scrollHeight}px`;
 });
 $("new-chat").addEventListener("click", startNewChat);
+$("open-profile").addEventListener("click", openProfile);
+$("profile-close").addEventListener("click", () => dialog.close());
+dialog.addEventListener("click", (e) => {
+  if (e.target === dialog) dialog.close(); // a click on the dimmed backdrop closes it
+});
+$("profile-add").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const res = await fetch("/api/profile", { method: "POST", body: JSON.stringify({ key: $("add-key").value, value: $("add-value").value }) });
+  if (!res.ok) return profileError((await res.json().catch(() => ({}))).error || "Couldn't save that.");
+  $("add-key").value = "";
+  $("add-value").value = "";
+  await loadProfile();
+  $("add-key").focus();
+});
+$("profile-clear").addEventListener("click", async () => {
+  if (!confirm("Forget everything I know about you? This can't be undone.")) return;
+  await fetch("/api/profile", { method: "DELETE" });
+  await loadProfile();
+});
 $("menu").addEventListener("click", () => document.body.classList.add("nav-open"));
 $("scrim").addEventListener("click", () => document.body.classList.remove("nav-open"));
 
 // A reload (or a shared link with #<id>) reopens that chat; otherwise show the landing screen.
 (async function boot() {
   renderChips();
+  updateGreeting();
   const id = window.location.hash.slice(1);
   if (id) await openConversation(id);
   loadHistory();
+  loadProfile();
 })();

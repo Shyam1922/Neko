@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dayOf, resolveTimePhrase, safeTimeZone } from "../src/memory/dates.ts";
 
-// Thursday 12 November 2026, 14:00 in Delhi.
+// Thursday 12 November 2026, 14:00 in Asia/Kolkata.
 const NOW = new Date("2026-11-12T08:30:00Z");
 const TZ = "Asia/Kolkata";
 const days = (phrase: string, now = NOW, tz = TZ) => resolveTimePhrase(phrase, now, tz).map((c) => c.from);
@@ -49,7 +49,7 @@ test("last week is the previous Monday to Sunday", () => {
 });
 
 test("the timezone decides which day it is", () => {
-  const lateUtc = new Date("2026-11-12T20:00:00Z"); // already Fri 13 Nov 01:30 in Delhi
+  const lateUtc = new Date("2026-11-12T20:00:00Z"); // already Fri 13 Nov 01:30 in Asia/Kolkata
   assert.equal(dayOf(lateUtc, "Asia/Kolkata"), "2026-11-13");
   assert.equal(dayOf(lateUtc, "UTC"), "2026-11-12");
   assert.deepEqual(days("yesterday", lateUtc, "Asia/Kolkata"), ["2026-11-12"]);

@@ -15,9 +15,10 @@ Most chatbots can search the web, but they can't connect *"what you asked me las
 | You ask | What Recall does |
 | --- | --- |
 | "What does Neon charge for Postgres hosting?" | Searches the web and answers with clickable source links. |
-| "Has any of that changed since I asked on Monday?" | Finds that earlier conversation, re-checks each fact, and reports **changed / unchanged / couldn't verify / no baseline**, with sources. |
+| "Has any of that changed since I asked on Monday?" | Finds that earlier conversation, re-checks each fact, and reports **changed / unchanged / couldn't verify / no baseline**, with sources. If there is no record of that chat, it says so first, then searches what changed on the web since that date. |
 | "Did we ever talk about Uganda?" | Lists every earlier chat that mentions it, with times and your exact words. |
 | "No, that's not the one I meant" | Excludes that conversation and tries the next candidate; after a second miss it asks which one you mean. |
+| "I'm Alex, I run sales for a 20-person team and I prefer short answers" | Remembers it, tailors this and every later answer to you (a pricing question comes back as a cost for 20 seats), and greets you by name. See [Personalisation](#personalisation). |
 | "What is the capital of France?" | Answers directly. No search, no memory lookup. |
 
 ![A cited, web-searched answer](docs/screenshots/research.jpg)
@@ -25,6 +26,17 @@ Most chatbots can search the web, but they can't connect *"what you asked me las
 ![A then-versus-now check with honest verdicts](docs/screenshots/then-vs-now.jpg)
 
 The worst failure for an assistant like this is **inventing a past that never happened**, so Recall never does: a baseline must be a verbatim quote from a stored message, and a current value must be a verbatim quote from a real search result. If it can't prove it, it says "no record" or "couldn't verify".
+
+## Personalisation
+
+Recall remembers what you tell it about yourself and uses it to tailor answers:
+
+- **Facts you state** ("I'm Alex", "we're a 20-person team", "my budget is 500 a month", "I'm based in Lisbon", "I prefer short answers") are saved automatically and used in every later chat, so you never repeat them. It also greets you by name.
+- **Local context.** A saved currency or region steers how prices are shown. Recall never converts currencies from memory: if a source only gives another currency, it shows that and says so.
+- **Tone and format.** A stated preference for short answers, bullets or detail is followed.
+- **You stay in control.** Under each reply Recall says what it just remembered, with **Undo**. **What I know about you** (bottom of the sidebar) lists every saved fact: edit one, delete one, add one by hand (for example *Team size: 20 people*), or forget everything. Facts you add by hand go through the same safety checks.
+
+How it stays trustworthy: nothing is inferred. The router that already reads each message proposes facts you stated, and code keeps one only if it is a **verbatim quote** from your message, is short, and does not look like a secret, an email or an ID number (passwords, API keys, card or phone numbers and health details are never stored). That costs **no extra model call**. Facts live in `data/profile/facts.json` on your machine (git-ignored); a newer statement replaces an older one for the same key.
 
 ## Run it
 
@@ -62,7 +74,7 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | `npm run check:models` | Lists the models your key can call |
 | `npm run probe:search` | Connects to the search server and prints its tools and a sample result |
 
-**Troubleshooting.** A "model not found" error means your key can't use that model: pick one from `npm run check:models` and set `GEMINI_MODEL`. Free-tier rate limits and Google's occasional "high demand" errors are retried automatically and otherwise shown with Google's own reason.
+**Troubleshooting.** If the configured model isn't available for your key, Recall switches to the newest flash-lite model your key can use and logs the switch; to choose one yourself, pick from `npm run check:models` and set `GEMINI_MODEL`. Free-tier rate limits and Google's occasional "high demand" errors are retried automatically and otherwise shown with Google's own reason.
 
 ## How it works
 
@@ -96,7 +108,8 @@ src/
     errors.ts          turns Google's raw errors into readable ones
   agent/
     pipeline.ts        one turn, end to end
-    router.ts          classify the message (1 model call)
+    router.ts          classify the message and spot facts about you (1 model call)
+    personalize.ts     which proposed facts are kept (verbatim quote, no secrets) and how the model sees them
     claims.ts          old answers -> verified claims
     compare.ts         then vs now: verification and verdicts, in code
     research.ts        bounded search loop (2 searches per turn)
@@ -105,6 +118,7 @@ src/
     store.ts           one JSON file per conversation
     dates.ts           "last Tuesday" -> ranked candidate days (injectable clock)
     recall.ts          find the conversation you mean
+    profile.ts         the facts you told Recall about yourself (viewable, editable)
 public/                the chat page: landing screen, history sidebar (no build step)
 scripts/               ping-model, check-models, probe-search
 test/                  unit tests with fake models and a fake search

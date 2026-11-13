@@ -5,6 +5,8 @@ import { friendlyMessage } from "./adapters/errors.ts";
 import type { Llm } from "./adapters/llm.ts";
 import type { Search } from "./adapters/search.ts";
 import { runAgent } from "./agent/pipeline.ts";
+import { cleanKey, cleanValue } from "./agent/personalize.ts";
+import type { ProfileStore } from "./memory/profile.ts";
 import { isValidId, type JsonStore, type RecallMeta, type SearchLog } from "./memory/store.ts";
 import { safeTimeZone } from "./memory/dates.ts";
 
@@ -12,6 +14,7 @@ export interface AppDeps {
   store: JsonStore;
   llm: Llm;
   search: Search;
+  profile: ProfileStore;
   publicDir: string;
   now?: () => Date;
 }
@@ -41,7 +44,7 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export function createApp({ store, llm, search, publicDir, now = () => new Date() }: AppDeps): http.Server {
+export function createApp({ store, llm, search, profile, publicDir, now = () => new Date() }: AppDeps): http.Server {
   async function chat(req: http.IncomingMessage, res: http.ServerResponse) {
     let input: { conversationId?: unknown; text?: unknown; tz?: unknown };
     try {
@@ -86,7 +89,7 @@ export function createApp({ store, llm, search, publicDir, now = () => new Date(
     let recall: RecallMeta | undefined;
     try {
       let firstTokenMs: number | undefined;
-      for await (const ev of runAgent({ llm, search, store }, { conv, tz, now, signal: abort.signal })) {
+      for await (const ev of runAgent({ llm, search, store, profile }, { conv, tz, now, signal: abort.signal })) {
         if (ev.type === "token") {
           firstTokenMs ??= Date.now() - started;
           reply += ev.text;
@@ -95,6 +98,8 @@ export function createApp({ store, llm, search, publicDir, now = () => new Date(
           send("searching", { queries: ev.queries });
         } else if (ev.type === "status") {
           send("status", { text: ev.text });
+        } else if (ev.type === "profile") {
+          send("profile", { saved: ev.saved }); // so the page can say what was remembered, with an Undo
         } else if (ev.type === "recall") {
           recall = ev.meta; // remembered on the reply so "that's wrong" knows what to exclude
         } else {
@@ -138,6 +143,42 @@ export function createApp({ store, llm, search, publicDir, now = () => new Date(
       if (req.method === "GET" && m) {
         const conv = await store.get(m[1]);
         return conv ? sendJson(res, 200, conv) : sendJson(res, 404, { error: "Conversation not found" });
+      }
+      // What Recall knows about the user: visible, editable, deletable.
+      if (pathname === "/api/profile") {
+        if (req.method === "GET") return sendJson(res, 200, await profile.list());
+        if (req.method === "DELETE") return await profile.clear(), sendJson(res, 200, { ok: true });
+        if (req.method === "POST") {
+          // The user adds a fact by hand in the panel. Same safety checks as facts picked up from chat.
+          let body: { key?: unknown; value?: unknown } = {};
+          try {
+            body = JSON.parse(await readBody(req));
+          } catch {
+            /* handled below */
+          }
+          const key = cleanKey(body.key);
+          const value = cleanValue(body.value);
+          if (!key || !value) {
+            return sendJson(res, 400, { error: "Give a short label (letters and numbers) and a value up to 120 characters. Secrets, emails and ID numbers can't be saved." });
+          }
+          const saved = await profile.upsert({ key, value, quote: "(added by you in the panel)" }, { conversationId: "manual", messageId: "manual" });
+          return saved ? sendJson(res, 200, saved.fact) : sendJson(res, 409, { error: "Your profile is full. Remove something first." });
+        }
+      }
+      const pf = pathname.match(/^\/api\/profile\/([^/]+)$/);
+      if (pf && req.method === "DELETE") {
+        return (await profile.remove(pf[1])) ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: "Not found" });
+      }
+      if (pf && req.method === "PUT") {
+        let value: string | null = null;
+        try {
+          value = cleanValue(JSON.parse(await readBody(req)).value);
+        } catch {
+          /* handled below */
+        }
+        if (!value) return sendJson(res, 400, { error: "value must be 1-120 characters and must not look like a secret or an ID number." });
+        const fact = await profile.update(pf[1], value);
+        return fact ? sendJson(res, 200, fact) : sendJson(res, 404, { error: "Not found" });
       }
       if (req.method === "GET") return await serveStatic(pathname, res);
       sendJson(res, 405, { error: "Method not allowed" });

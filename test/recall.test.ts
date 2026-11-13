@@ -89,7 +89,7 @@ test("topic only, several chats match: all are returned (best score, then newest
   assert.equal(r.kind, "several");
   if (r.kind === "several") {
     assert.deepEqual(r.hits.map((h) => h.conversationId), [b.id, a.id]); // same score: newest first
-    assert.equal(r.hits[0].label, "Thu 5 Nov 11:30"); // 06:00 UTC is 11:30 in Delhi
+    assert.equal(r.hits[0].label, "Thu 5 Nov 11:30"); // 06:00 UTC is 11:30 in Asia/Kolkata
     assert.equal(r.hits[1].snippet, "what is the capital of uganda");
   }
 });
@@ -120,7 +120,7 @@ test("topic only (no date) finds the best strong match", () => {
 });
 
 test("a day means the day in the message's own timezone", () => {
-  // 20:00 UTC on 2 Nov is already 3 Nov in Delhi, so "3 November" finds it.
+  // 20:00 UTC on 2 Nov is already 3 Nov in Asia/Kolkata, so "3 November" finds it.
   const late = conv("Postgres hosting late night", "2026-11-02T20:00:00Z");
   const r = ask({ phrase: "3 November", topic: "Postgres hosting" }, [late]);
   assert.equal(r.kind, "match");

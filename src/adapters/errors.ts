@@ -52,6 +52,13 @@ export function parseRateLimit(err: unknown): RateLimitInfo | null {
   return info;
 }
 
+/** The configured model doesn't exist for this key (a retired name, or one the key can't use). */
+export function isModelNotFound(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const e = err as { status?: number; code?: number; message?: string };
+  return e.status === 404 || e.code === 404 || /NOT_FOUND|is not found|no longer available/i.test(String(e.message ?? ""));
+}
+
 /** Google's temporary "high demand" errors (HTTP 503 / UNAVAILABLE). Worth a short retry. */
 export function isOverloaded(err: unknown): boolean {
   if (typeof err !== "object" || err === null) return false;

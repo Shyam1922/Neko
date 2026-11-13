@@ -12,6 +12,7 @@
       <div class="brand">Recall</div>
       <button id="new-chat" type="button">+ New chat</button>
       <nav id="history" aria-label="Recent chats"></nav>
+      <button id="open-profile" type="button">What I know about you</button>
     </aside>
     <div id="scrim"></div>
 
@@ -35,6 +36,25 @@
       <div id="chips"></div>
     </section>
   </div>
+  <dialog id="profile-dialog" aria-labelledby="profile-title">
+    <div class="dlg-head">
+      <h2 id="profile-title">What I know about you</h2>
+      <button id="profile-close" type="button" aria-label="Close">×</button>
+    </div>
+    <p class="hint">I only save things you tell me outright, in your own words. Edit or remove anything here.</p>
+    <div id="profile-list"></div>
+    <form id="profile-add" autocomplete="off">
+      <input id="add-key" list="key-suggestions" placeholder="Label, e.g. Team size" maxlength="30" aria-label="Label" required>
+      <input id="add-value" placeholder="Value, e.g. 20 people" maxlength="120" aria-label="Value" required>
+      <button type="submit">Add</button>
+    </form>
+    <datalist id="key-suggestions">
+      <option value="Name"><option value="Role"><option value="Company"><option value="Team size"><option value="Budget">
+      <option value="Location"><option value="Currency"><option value="Answer length"><option value="Answer format">
+    </datalist>
+    <p id="profile-error" class="hint err" hidden></p>
+    <div class="dlg-foot"><button id="profile-clear" type="button">Forget everything</button></div>
+  </dialog>
   <script src="/app.js"></script>
 </body>
 </html>

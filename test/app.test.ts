@@ -6,6 +6,7 @@ import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../src/app.ts";
 import { JsonStore } from "../src/memory/store.ts";
+import { ProfileStore } from "../src/memory/profile.ts";
 import type { Llm, LlmEvent, StreamRequest } from "../src/adapters/llm.ts";
 import type { Search } from "../src/adapters/search.ts";
 
@@ -28,10 +29,11 @@ async function start(llm: Llm) {
   const dir = await mkdtemp(path.join(os.tmpdir(), "recall-app-"));
   const store = new JsonStore(dir, () => new Date("2026-11-12T08:00:00Z"));
   const now = () => new Date("2026-11-12T08:00:00Z");
-  const server = createApp({ store, llm, search: noSearch, publicDir: path.resolve("public"), now });
+  const profile = new ProfileStore(dir);
+  const server = createApp({ store, llm, search: noSearch, profile, publicDir: path.resolve("public"), now });
   await new Promise<void>((r) => server.listen(0, r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  return { base, store, close: () => { server.closeAllConnections(); server.close(); } };
+  return { base, store, profile, close: () => { server.closeAllConnections(); server.close(); } };
 }
 
 function events(body: string) {
@@ -71,6 +73,50 @@ test("rejects empty text, bad ids and unknown conversations", async () => {
   assert.equal((await post(base, { text: "  " })).status, 400);
   assert.equal((await post(base, { text: "hi", conversationId: "../x" })).status, 400);
   assert.equal((await post(base, { text: "hi", conversationId: "nope" })).status, 404);
+  close();
+});
+
+test("profile endpoints: list, edit with validation, delete one, clear all; the profile never shows up as a chat", async () => {
+  const { base, profile, close } = await start(new FakeLlm());
+  const saved = await profile.upsert({ key: "team_size", value: "20 people", quote: "a 20-person team" }, { conversationId: "c", messageId: "m" });
+  const id = saved!.fact.id;
+  assert.equal((await (await fetch(`${base}/api/profile`)).json()).length, 1);
+  assert.equal((await (await fetch(`${base}/api/conversations`)).json()).length, 0); // not mistaken for a conversation
+
+  const put = (body: unknown) => fetch(`${base}/api/profile/${id}`, { method: "PUT", body: JSON.stringify(body) });
+  assert.equal((await (await put({ value: "25 people" })).json()).value, "25 people");
+  assert.equal((await put({ value: "" })).status, 400);
+  assert.equal((await put({ value: "my password is hunter2" })).status, 400); // looks like a secret
+  assert.equal((await fetch(`${base}/api/profile/nope`, { method: "PUT", body: JSON.stringify({ value: "x" }) })).status, 404);
+
+  assert.equal((await fetch(`${base}/api/profile/${id}`, { method: "DELETE" })).status, 200);
+  assert.equal((await fetch(`${base}/api/profile/${id}`, { method: "DELETE" })).status, 404);
+  await profile.upsert({ key: "name", value: "Alex", quote: "I'm Alex" }, { conversationId: "c", messageId: "m" });
+  assert.equal((await fetch(`${base}/api/profile`, { method: "DELETE" })).status, 200);
+  assert.deepEqual(await (await fetch(`${base}/api/profile`)).json(), []);
+  close();
+});
+
+test("adding a fact by hand: label becomes a key, same safety checks, replaces by key, refuses when full", async () => {
+  const { base, profile, close } = await start(new FakeLlm());
+  const post = (body: unknown) => fetch(`${base}/api/profile`, { method: "POST", body: JSON.stringify(body) });
+
+  const ok = await post({ key: "Team size", value: " 20   people " });
+  assert.equal(ok.status, 200);
+  const fact = await ok.json();
+  assert.deepEqual([fact.key, fact.value], ["team_size", "20 people"]);
+
+  const again = await (await post({ key: "team size", value: "25 people" })).json(); // same key: replaced, not duplicated
+  assert.equal(again.id, fact.id);
+  assert.equal((await profile.list()).length, 1);
+
+  for (const bad of [{ key: "", value: "x" }, { key: "Team", value: "" }, { key: "!!!", value: "x" }, { key: "Password", value: "x" }, { key: "Contact", value: "me@example.com" }, { key: "Phone", value: "9876543210" }, { value: "x" }]) {
+    assert.equal((await post(bad)).status, 400, JSON.stringify(bad));
+  }
+
+  for (let i = 0; i < 39; i++) await profile.upsert({ key: `k_${i}`, value: "v", quote: "q" }, { conversationId: "c", messageId: "m" });
+  assert.equal((await post({ key: "One more", value: "x" })).status, 409); // 40 facts already
+  assert.equal((await post({ key: "Team size", value: "30 people" })).status, 200); // existing keys can still change
   close();
 });
 

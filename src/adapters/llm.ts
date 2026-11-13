@@ -1,5 +1,5 @@
 import { GoogleGenAI, type Content, type Part } from "@google/genai";
-import { parseRateLimit, RateLimitError, retryDelayMs } from "./errors.ts";
+import { isModelNotFound, parseRateLimit, RateLimitError, retryDelayMs } from "./errors.ts";
 import { withTimeout } from "./timeout.ts";
 
 export interface ToolCall {
@@ -51,6 +51,21 @@ const MAX_RETRY_WAIT_MS = 20_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * When the configured model doesn't exist for this key, choose another one the key can use:
+ * the newest "flash-lite" (fast and cheap on a free tier), else the newest "flash". Text models only.
+ */
+export function pickFallbackModel(models: { name: string; supportedActions?: string[] }[], failed: string): string | null {
+  const notText = /image|tts|audio|live|embed|robotic|computer|nano|banana|omni|deep|antigravity|argon|carbon|hydrogen|gemma|imagen|veo/i;
+  const version = (id: string) => Number(/gemini-(\d+(?:\.\d+)?)/.exec(id)?.[1] ?? 0);
+  const bare = (n: string) => n.replace(/^models\//, "");
+  const candidates = models
+    .map((m) => ({ id: bare(m.name), actions: m.supportedActions ?? [] }))
+    .filter((m) => m.actions.includes("generateContent") && /^gemini-.*flash/.test(m.id) && !notText.test(m.id) && m.id !== bare(failed));
+  candidates.sort((a, b) => Number(/flash-lite/.test(b.id)) - Number(/flash-lite/.test(a.id)) || version(b.id) - version(a.id));
+  return candidates[0]?.id ?? null;
+}
+
 // Out of retries: rate limits become a readable RateLimitError; other errors pass through.
 function explain(err: unknown): unknown {
   const rl = parseRateLimit(err);
@@ -83,8 +98,22 @@ export function toContents(history: Turn[]): Content[] {
 
 export class GeminiLlm implements Llm {
   private ai: GoogleGenAI;
+  private triedFallback = false;
   constructor(apiKey: string, private model: string) {
     this.ai = new GoogleGenAI({ apiKey });
+  }
+
+  // First 404 "model not found": look at what this key can use and switch, once, loudly.
+  private async switchModel(): Promise<boolean> {
+    if (this.triedFallback) return false;
+    this.triedFallback = true;
+    const models: { name: string; supportedActions?: string[] }[] = [];
+    for await (const m of await this.ai.models.list()) models.push({ name: m.name ?? "", supportedActions: m.supportedActions });
+    const next = pickFallbackModel(models, this.model);
+    if (!next) return false;
+    console.warn(`[llm] model "${this.model}" is not available for this key; using "${next}". Set GEMINI_MODEL to choose one (npm run check:models lists them).`);
+    this.model = next;
+    return true;
   }
 
   async *stream(req: StreamRequest): AsyncIterable<LlmEvent> {
@@ -97,6 +126,10 @@ export class GeminiLlm implements Llm {
         }
         return;
       } catch (err) {
+        if (!yielded && isModelNotFound(err) && (await this.switchModel())) {
+          attempt--; // switching models doesn't use up a retry
+          continue;
+        }
         // Only retry if nothing reached the caller yet and the wait is short.
         const waitMs = retryDelayMs(err, attempt);
         if (waitMs === null) throw err;
@@ -125,6 +158,10 @@ export class GeminiLlm implements Llm {
         );
         return JSON.parse(res.text ?? "");
       } catch (err) {
+        if (isModelNotFound(err) && (await this.switchModel())) {
+          attempt--;
+          continue;
+        }
         const waitMs = retryDelayMs(err, attempt);
         if (waitMs === null) throw err;
         if (attempt >= MAX_RETRIES || waitMs > MAX_RETRY_WAIT_MS) throw explain(err);

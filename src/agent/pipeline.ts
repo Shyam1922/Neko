@@ -7,11 +7,13 @@
 
 import type { Llm, Turn } from "../adapters/llm.ts";
 import type { Search, SearchHit } from "../adapters/search.ts";
-import { dayOf } from "../memory/dates.ts";
+import { dayOf, resolveTimePhrase } from "../memory/dates.ts";
 import { recall } from "../memory/recall.ts";
+import type { ProfileStore } from "../memory/profile.ts";
 import type { Conversation, JsonStore, RecallMeta, SearchLog } from "../memory/store.ts";
 import { extractClaims } from "./claims.ts";
 import { compareClaim, noBaseline, resolveCurrent, type CurrentValue, type DiffItem } from "./compare.ts";
+import { acceptCandidates } from "./personalize.ts";
 import { buildSystemPrompt } from "./prompt.ts";
 import { runTurn, type TurnEvent } from "./research.ts";
 import { route, type Route, type RouteDecision } from "./router.ts";
@@ -20,6 +22,7 @@ export interface AgentDeps {
   llm: Llm;
   search: Search;
   store: JsonStore;
+  profile: ProfileStore;
 }
 
 export interface AgentInput {
@@ -29,7 +32,13 @@ export interface AgentInput {
   signal?: AbortSignal;
 }
 
-export type AgentEvent = TurnEvent | { type: "status"; text: string } | { type: "recall"; meta: RecallMeta };
+export type SavedFact = { id: string; key: string; value: string; previous?: string };
+
+export type AgentEvent =
+  | TurnEvent
+  | { type: "status"; text: string }
+  | { type: "recall"; meta: RecallMeta }
+  | { type: "profile"; saved: SavedFact[] }; // facts about the user remembered from this message
 
 const HISTORY_LIMIT = 30;
 const MAX_ENTITIES = 5;
@@ -164,6 +173,18 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
   const routeStart = Date.now();
   const decision = await route(llm, conv.messages, now(), tz, signal);
   console.log(`[route] ${decision.route}${decision.timePhrase ? ` time="${decision.timePhrase}"` : ""} ${Date.now() - routeStart}ms`);
+
+  // Personalisation: save what the user said about themselves (verified quotes only), then use it for this very reply.
+  const userMsg = conv.messages[conv.messages.length - 1];
+  const saved: SavedFact[] = [];
+  if (userMsg?.role === "user") {
+    for (const c of acceptCandidates(decision.profileUpdates, userMsg.text)) {
+      const r = await deps.profile.upsert(c, { conversationId: conv.id, messageId: userMsg.id });
+      if (r) saved.push({ id: r.fact.id, key: r.fact.key, value: r.fact.value, previous: r.previous });
+    }
+  }
+  if (saved.length) yield { type: "profile", saved };
+  const aboutUser = await deps.profile.list();
   let kind: Route = decision.route;
   let phrase = decision.timePhrase;
   let topic = decision.topic ?? (decision.entities.join(" ") || undefined);
@@ -223,11 +244,39 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
         // to the model with exact times, quoted by code, and let it answer from there if the answer is in it.
         const earlier = conv.messages.slice(0, -1); // everything before the message being answered
         const here = earlier.length ? `\n\nEarlier in this same chat:\n${transcript({ ...conv, messages: earlier })}` : "";
-        context =
-          `Looking through earlier separate conversations found nothing: ${result.message}` +
-          here +
-          `\n\nIf what the user asks about is in this same chat above, answer from it, naming the exact messages and times. ` +
-          `Otherwise say plainly you have no record. Never invent what was said. You may offer to research the topic fresh now.`;
+        const nothingHere = earlier.length === 0;
+
+        if (nothingHere) {
+          // "No record" is a fact code established, so code says it. A small model will otherwise improvise a reason
+          // ("I do not have access to past chats"), which is false: we looked and found nothing.
+          yield { type: "token", text: `${result.message}\n\n` };
+          if (kind === "memory") {
+            yield { type: "token", text: "Tell me what you'd like to know and I'll look it up fresh." };
+            return; // nothing left for the model to add: no second model call
+          }
+        }
+        const shown = nothingHere
+          ? `The user has ALREADY been shown this first paragraph, written by code: "${result.message}" Do not repeat it, rephrase it, or give any reason for it. Continue directly after it. `
+          : `Looking through earlier separate conversations found nothing: ${result.message}${here}\n\n` +
+            `If what the user asks about is in this same chat above, answer from it, naming the exact messages and times. ` +
+            `Otherwise say plainly that you have no record (never say you cannot access past conversations; you looked and found none). Never invent what was said. `;
+
+        if (kind === "memory_research") {
+          // "Has anything changed since X?" can often be answered from the web alone, without our own old answer:
+          // the date is known, so look for what changed after it. There is no baseline to diff against, and we say so.
+          const day = phrase ? resolveTimePhrase(phrase, now(), tz)[0] : undefined;
+          const since = day ? `The user means ${day.label} (${day.from}). ` : "";
+          context =
+            `${shown}\n` +
+            `You cannot say what you told them before or what changed relative to it, but the question can often be answered from the web alone, so do that. ${since}` +
+            `You MUST call web_search before answering: look for what changed or shipped since that date (price changes, new plans, major releases). ` +
+            `If the user refers to a list or answer you do not have (for example "the 5 tools we shortlisted"), say in one sentence that you do not have it and ask them to name the items, AND still research: from your own knowledge pick the 5 most commonly shortlisted options for their situation, say which ones you assumed, and search them. ` +
+            `Only report a change you can cite with a source dated after that date. If you find none, say "I found no change announced after ${day?.from ?? "that date"} in the sources I checked" and name what you checked; never state flatly that nothing has changed. ` +
+            `If you do not even know what they asked about, say so in one sentence and invite them to repeat the question instead of searching.`;
+          allowSearch = true;
+        } else {
+          context = `${shown}You may offer to research the topic fresh now.`;
+        }
       } else {
         const past = pool.find((c) => c.id === result.hit.conversationId)!;
         yield { type: "recall", meta: { ids: [past.id], phrase, topic, route: kind } };
@@ -246,7 +295,7 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
   yield* runTurn({
     llm,
     search,
-    system: [buildSystemPrompt(now(), tz), context].filter(Boolean).join("\n\n"),
+    system: [buildSystemPrompt(now(), tz, aboutUser), context].filter(Boolean).join("\n\n"),
     history: turnsOf(conv),
     sessionId: conv.id,
     signal,

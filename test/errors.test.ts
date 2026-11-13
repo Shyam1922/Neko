@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { describeRateLimit, friendlyMessage, isOverloaded, parseRateLimit, retryDelayMs } from "../src/adapters/errors.ts";
+import { describeRateLimit, friendlyMessage, isModelNotFound, isOverloaded, parseRateLimit, retryDelayMs } from "../src/adapters/errors.ts";
 
 const googleBody = JSON.stringify({
   error: {
@@ -50,6 +50,15 @@ test("overload (503) is retried with a growing delay; other errors are not", () 
   assert.equal(retryDelayMs(overloaded, 1), 4000);
   assert.equal(retryDelayMs(new Error("API key not valid"), 0), null);
   assert.equal(retryDelayMs(new Error("429 RESOURCE_EXHAUSTED. Please retry in 10s"), 0), 10250);
+});
+
+test("a missing model is recognised so the app can switch to one the key can use", () => {
+  const notFound = new Error(JSON.stringify({ error: { code: 404, status: "NOT_FOUND", message: "models/gemini-flash-latest is not found for API version v1" } }));
+  assert.equal(isModelNotFound(notFound), true);
+  assert.equal(isModelNotFound(Object.assign(new Error("x"), { status: 404 })), true);
+  assert.equal(isModelNotFound(new Error("This model is no longer available to new users")), true);
+  assert.equal(isModelNotFound(new Error("API key not valid")), false);
+  assert.equal(isModelNotFound(new Error("429 RESOURCE_EXHAUSTED")), false);
 });
 
 test("non-rate-limit errors return null", () => {

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { runAgent, type AgentEvent } from "../src/agent/pipeline.ts";
 import { JsonStore, type Conversation } from "../src/memory/store.ts";
+import { ProfileStore } from "../src/memory/profile.ts";
 import type { JsonRequest, Llm, LlmEvent, StreamRequest } from "../src/adapters/llm.ts";
 import type { Search, SearchHit } from "../src/adapters/search.ts";
 
@@ -44,9 +45,12 @@ class FakeSearch implements Search {
   }
 }
 
+const profiles = new WeakMap<JsonStore, ProfileStore>();
 async function setup() {
   let clock = NOW;
-  const store = new JsonStore(await mkdtemp(path.join(os.tmpdir(), "recall-pipe-")), () => clock);
+  const dir = await mkdtemp(path.join(os.tmpdir(), "recall-pipe-"));
+  const store = new JsonStore(dir, () => clock);
+  profiles.set(store, new ProfileStore(dir, () => clock));
   const at = (iso: string) => void (clock = new Date(iso));
   return { store, at };
 }
@@ -64,11 +68,13 @@ async function seedNeon(store: JsonStore, at: (iso: string) => void) {
   return { conv: u.conversation, assistantId: a.message.id };
 }
 
+const textOf = (events: AgentEvent[]) => events.flatMap((e) => (e.type === "token" ? [e.text] : [])).join("");
+
 async function ask(llm: FakeAgentLlm, search: Search, store: JsonStore, at: (iso: string) => void, text: string, convId?: string) {
   at(NOW.toISOString());
   const saved = await store.append(convId, { role: "user", text, tz: TZ });
   const events: AgentEvent[] = [];
-  for await (const ev of runAgent({ llm, search, store }, { conv: saved.conversation, tz: TZ, now: () => NOW })) events.push(ev);
+  for await (const ev of runAgent({ llm, search, store, profile: profiles.get(store)! }, { conv: saved.conversation, tz: TZ, now: () => NOW })) events.push(ev);
   return { events, convId: saved.conversation.id };
 }
 
@@ -100,7 +106,8 @@ test("memory with no matching conversation: says there is no record, never inven
   await seedNeon(store, at);
   const llm = new FakeAgentLlm({ route: () => decision({ route: "memory", time_phrase: "yesterday", topic: "Kubernetes" }) });
   const { events } = await ask(llm, new FakeSearch([]), store, at, "What did I ask yesterday about Kubernetes?");
-  assert.match(llm.system, /no record/);
+  assert.match(textOf(events), /^I have no record of a conversation about Kubernetes from Wed 11 Nov\./); // written by code, with the resolved day
+  assert.equal(llm.streamed.length, 0); // a plain "no record" needs no second model call
   assert.equal(events.some((e) => e.type === "recall"), false);
 });
 
@@ -115,6 +122,32 @@ test("nothing in earlier conversations, but the answer is earlier in THIS chat: 
   assert.match(llm.system, /The user said: "whats the gold price today"/);
   assert.match(llm.system, /answer from it/);
   assert.doesNotMatch(llm.system, /no memory of earlier conversations/); // the stale contradiction is gone
+});
+
+test("no record + 'has it changed since X?': says so, then researches what changed on the web since that date", async () => {
+  const { store, at } = await setup();
+  const llm = new FakeAgentLlm({ route: () => decision({ route: "memory_research", time_phrase: "Last Tuesday", topic: "postgres hosting" }) });
+  const { events } = await ask(llm, new FakeSearch([]), store, at, "Last Tuesday I asked you about Postgres hosting. Has any pricing changed since then?");
+  assert.equal(events.some((e) => e.type === "recall"), false); // nothing was recalled
+  // The "no record" sentence is code's, not the model's, so it can't be reworded into a false "I have no access".
+  assert.match(textOf(events), /^I have no record of a conversation about postgres hosting from Tue 10 Nov\.\n\n/);
+  assert.match(llm.system, /ALREADY been shown/);
+  assert.match(llm.system, /MUST call web_search/);
+  assert.match(llm.system, /never state flatly that nothing has changed/);
+  assert.match(llm.system, /cannot say what you told them before/);
+  assert.match(llm.system, /Tue 10 Nov \(2026-11-10\)/); // the date, resolved by code, so the model can look for newer items
+  assert.match(llm.system, /after that date/);
+  assert.match(llm.system, /the 5 tools we shortlisted/); // asks for the list it doesn't have, while researching likely options
+  assert.equal(llm.streamed[0].tools?.length, 1); // search is available this time
+  assert.match(llm.system, /never say you cannot access/i); // told never to claim it lacks access: it looked and found nothing
+});
+
+test("no record on a plain memory question: no research, just an honest 'no record'", async () => {
+  const { store, at } = await setup();
+  const llm = new FakeAgentLlm({ route: () => decision({ route: "memory", time_phrase: "3 November" }) });
+  const { events } = await ask(llm, new FakeSearch([]), store, at, "What did I ask you on 3 November?");
+  assert.match(textOf(events), /^I have no record of a conversation from Tue 3 Nov\.\n\nTell me what you'd like to know/);
+  assert.equal(llm.streamed.length, 0); // no research, and no second model call either
 });
 
 test("memory_research: extracts claims once, searches, compares in code, and reports CHANGED with the delta", async () => {
@@ -273,6 +306,63 @@ test("router output that fails validation falls back to the tool-enabled researc
   const llm = new FakeAgentLlm({ route: () => ({ route: "banana" }) });
   await ask(llm, new FakeSearch([]), store, at, "anything");
   assert.equal(llm.streamed[0].tools?.length, 1);
+});
+
+const facts = (...f: { key: string; value: string; quote: string }[]) => ({ profile_updates: f });
+
+test("personalisation: a fact the user states is saved, announced, and used for this very reply", async () => {
+  const { store, at } = await setup();
+  const llm = new FakeAgentLlm({ route: () => decision(facts({ key: "team_size", value: "20 people", quote: "we're a 20-person sales team" })) });
+  const { events } = await ask(llm, new FakeSearch([]), store, at, "Hi, we're a 20-person sales team, which CRM should we pick?");
+  const saved = events.find((e) => e.type === "profile");
+  assert.deepEqual(saved && saved.type === "profile" && saved.saved.map((s) => [s.key, s.value]), [["team_size", "20 people"]]);
+  assert.match(llm.system, /What the user has told you about themselves/);
+  assert.match(llm.system, /- Team size: 20 people/);
+  assert.equal(llm.count("route"), 1); // personalisation costs no extra model call
+});
+
+test("personalisation: only the user's own words count: invented quotes and sensitive values are dropped", async () => {
+  const { store, at } = await setup();
+  const llm = new FakeAgentLlm({
+    route: () =>
+      decision(facts(
+        { key: "role", value: "CEO", quote: "I am the CEO" }, // not in the message
+        { key: "api_key", value: "abc", quote: "my key is abc" }, // sensitive key (and not said)
+        { key: "phone", value: "call me on 9876543210", quote: "call me on 9876543210" }, // long number
+        { key: "location", value: "Lisbon", quote: "I'm based in Lisbon" }, // fine
+      )),
+  });
+  const { events } = await ask(llm, new FakeSearch([]), store, at, "I'm based in Lisbon and call me on 9876543210");
+  const saved = events.find((e) => e.type === "profile");
+  assert.deepEqual(saved && saved.type === "profile" && saved.saved.map((s) => s.key), ["location"]);
+  assert.doesNotMatch(llm.system, /CEO|9876543210/);
+});
+
+test("personalisation: a newer statement replaces the older fact and reports what it replaced", async () => {
+  const { store, at } = await setup();
+  const llm = new FakeAgentLlm({ route: () => decision(facts({ key: "currency", value: "INR", quote: "show prices in INR" })) });
+  await ask(llm, new FakeSearch([]), store, at, "show prices in INR");
+  const llm2 = new FakeAgentLlm({ route: () => decision(facts({ key: "currency", value: "USD", quote: "actually USD is better" })) });
+  const { events } = await ask(llm2, new FakeSearch([]), store, at, "actually USD is better");
+  const saved = events.find((e) => e.type === "profile");
+  assert.deepEqual(saved && saved.type === "profile" && saved.saved.map((s) => [s.value, s.previous]), [["USD", "INR"]]);
+  assert.match(llm2.system, /- Currency: USD/);
+  assert.doesNotMatch(llm2.system, /INR/);
+  assert.equal((await profiles.get(store)!.list()).length, 1);
+});
+
+test("personalisation: what is known carries into a brand-new chat; with nothing known there is no profile section", async () => {
+  const { store, at } = await setup();
+  const first = new FakeAgentLlm({ route: () => decision(facts({ key: "name", value: "Alex", quote: "I'm Alex" })) });
+  await ask(first, new FakeSearch([]), store, at, "I'm Alex");
+  const second = new FakeAgentLlm({ route: () => decision({}) });
+  await ask(second, new FakeSearch([]), store, at, "what is 2+2?"); // no conversationId: a new chat
+  assert.match(second.system, /- Name: Alex/);
+
+  const clean = await setup();
+  const third = new FakeAgentLlm({ route: () => decision({}) });
+  await ask(third, new FakeSearch([]), clean.store, clean.at, "hello");
+  assert.doesNotMatch(third.system, /told you about themselves/);
 });
 
 // keep the type import used
