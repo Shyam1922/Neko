@@ -166,6 +166,7 @@ test("memory_research: extracts claims once, searches, compares in code, and rep
   assert.equal(search.calls, 1);
   assert.match(llm.system, /Neon \/ Launch plan price: CHANGED/);
   assert.match(llm.system, /change: \+6 \(\+31\.58%\)/);
+  assert.match(llm.system, /exact uppercase label \(CHANGED, UNCHANGED, COULD NOT VERIFY, NO BASELINE\)/); // the page badges exactly these
   assert.match(llm.system, /after a web search|from a web search/);
   assert.match(llm.system, /https:\/\/neon\.com\/pricing/);
   assert.equal(llm.streamed[0].tools, undefined); // the answer call cannot search; the facts are already in

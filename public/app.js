@@ -5,7 +5,6 @@ const input = $("input");
 const send = $("send");
 const main = $("main");
 const historyEl = $("history");
-const chipsEl = $("chips");
 const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 let conversationId; // the open chat; also kept in the URL hash so a reload reopens it
@@ -28,8 +27,48 @@ function render(text) {
     .replace(/(^|[\s(])(https?:\/\/[^\s<)&]+[^\s<).,;:&])/g, (_, pre, url) => `${pre}${link(url, url)}`)
     .replace(/`([^`\n]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
-    .replace(/(^|[^*\w])\*([^*\s][^*\n]*?)\*(?![*\w])/g, "$1<em>$2</em>");
+    .replace(/(^|[^*\w])\*([^*\s][^*\n]*?)\*(?![*\w])/g, "$1<em>$2</em>")
+    // The four verdicts Recall reports are shown as badges, so a then-versus-now answer reads at a glance.
+    .replace(/\b(COULD NOT VERIFY|NO BASELINE|UNCHANGED|CHANGED)\b/g, (v) => {
+      const [cls, label] = { CHANGED: ["b-changed", "Changed"], UNCHANGED: ["b-same", "Unchanged"], "COULD NOT VERIFY": ["b-unv", "Couldn't verify"], "NO BASELINE": ["b-none", "No baseline"] }[v];
+      return `<span class="badge ${cls}">${label}</span>`;
+    });
 }
+
+// ---- theme: light, dark, or follow the system ----------------------------------------------
+// The choice lives in this browser only (localStorage). index.html applies it before first paint.
+
+const THEME_KEY = "recall-theme";
+const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+function themePref() {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    return v === "light" || v === "dark" ? v : "system";
+  } catch {
+    return "system"; // storage blocked: just follow the system
+  }
+}
+
+function applyTheme(pref) {
+  const dark = pref === "dark" || (pref === "system" && systemDark.matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  for (const b of document.querySelectorAll("#theme-seg button")) b.setAttribute("aria-checked", String(b.dataset.themePref === pref));
+}
+
+function setTheme(pref) {
+  try {
+    if (pref === "system") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, pref);
+  } catch {
+    /* the theme still changes for this visit */
+  }
+  applyTheme(pref);
+}
+
+systemDark.addEventListener("change", () => {
+  if (themePref() === "system") applyTheme("system"); // follow the OS when it switches
+});
 
 // ---- landing vs conversation -------------------------------------------------------------
 
@@ -44,7 +83,19 @@ const updateGreeting = () => ($("greeting").textContent = greeting());
 // The profile button: your initial (or a person icon until Recall knows your name) and how much it remembers.
 const PERSON_ICON =
   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
+// Top bar title (the open chat) and the memory line on the landing screen.
+function updateChrome() {
+  $("chat-title").textContent = conversations.find((c) => c.id === conversationId)?.title || "";
+  const chats = conversations.length;
+  const facts = profile.length;
+  $("status-line").textContent =
+    chats || facts
+      ? `${chats} chat${chats === 1 ? "" : "s"} remembered · ${facts} fact${facts === 1 ? "" : "s"} about you`
+      : "A fresh start: nothing remembered yet";
+}
+
 function updateProfileButton() {
+  updateChrome();
   const name = profile.find((f) => f.key === "name")?.value;
   const initial = name ? [...name.trim()][0] : "";
   if (initial) $("avatar").textContent = initial.toUpperCase();
@@ -54,20 +105,6 @@ function updateProfileButton() {
 }
 
 const setEmpty = (empty) => main.classList.toggle("empty", empty);
-
-function renderChips() {
-  const prompts = ["What's the gold price today?", "Compare Notion and Obsidian pricing for a 10-person team"];
-  if (conversations.length) prompts.push("Did we ever talk about pricing?");
-  chipsEl.textContent = "";
-  for (const p of prompts) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "chip";
-    b.textContent = p;
-    b.addEventListener("click", () => submit(p));
-    chipsEl.appendChild(b);
-  }
-}
 
 function resetLog() {
   log.textContent = "";
@@ -91,6 +128,7 @@ function groupLabel(iso) {
 }
 
 function renderHistory() {
+  updateChrome();
   historyEl.textContent = "";
   if (!conversations.length) {
     const note = document.createElement("div");
@@ -127,7 +165,6 @@ async function loadHistory() {
     /* the sidebar is a convenience; chatting still works without it */
   }
   renderHistory();
-  renderChips();
 }
 
 // ---- "What I know about you": visible, editable, deletable ---------------------------------
@@ -231,7 +268,59 @@ function showRemembered(wrap, saved) {
 
 // ---- messages ----------------------------------------------------------------------------
 
-function addMessage(role, text, at) {
+// "12.3s", or "1m 05s" for a long one: how long the answer took, shown next to the time.
+function formatDuration(ms) {
+  const s = ms / 1000;
+  if (s < 59.95) return `${s.toFixed(1)}s`;
+  return `${Math.floor(s / 60)}m ${String(Math.round(s % 60)).padStart(2, "0")}s`;
+}
+
+// Under each answer: how long it took, how many searches it ran, and which sites those searches returned.
+// Only http(s) links are ever made; the data comes from our own search log, not from the model's text.
+function setMeta(wrap, { ms, searches } = {}) {
+  const meta = wrap.querySelector(".meta");
+  if (!meta) return;
+  meta.textContent = "";
+  const ok = (searches || []).filter((s) => !s.error && s.urls?.length);
+  const parts = [];
+  if (typeof ms === "number") parts.push(`answered in ${formatDuration(ms)}`);
+  if (ok.length) parts.push(`${ok.length} search${ok.length === 1 ? "" : "es"}`);
+  if (parts.length) {
+    const s = document.createElement("span");
+    s.textContent = parts.join(" · ");
+    meta.append(s);
+  }
+  const sites = new Map();
+  for (const search of ok) {
+    for (const u of search.urls) {
+      try {
+        const url = new URL(u);
+        if (!/^https?:$/.test(url.protocol)) continue;
+        const host = url.hostname.replace(/^www\./, "");
+        if (!sites.has(host)) sites.set(host, url.href);
+      } catch {
+        /* skip a malformed URL */
+      }
+    }
+  }
+  if (sites.size) {
+    const label = document.createElement("span");
+    label.textContent = "checked:";
+    meta.append(label);
+    for (const [host, href] of [...sites].slice(0, 6)) {
+      const a = document.createElement("a");
+      a.className = "src";
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.title = href;
+      a.textContent = host;
+      meta.append(a);
+    }
+  }
+}
+
+function addMessage(role, text, at, extra) {
   const d = at ? new Date(at) : new Date();
   const day = dayLabel(d);
   if (day !== lastDay) {
@@ -241,14 +330,29 @@ function addMessage(role, text, at) {
     log.appendChild(div);
     lastDay = day;
   }
-  const wrap = document.createElement("div");
+  const wrap = document.createElement("article");
   wrap.className = `msg ${role}`;
+  const lbl = document.createElement("div");
+  lbl.className = "lbl";
+  const who = document.createElement("span");
+  who.textContent = role === "user" ? "You" : "Recall";
+  const time = document.createElement("time");
+  time.textContent = timeLabel(d);
+  lbl.append(who, time);
   const bubble = document.createElement("div");
   bubble.className = "bubble";
   bubble.innerHTML = render(text);
-  const time = document.createElement("time");
-  time.textContent = timeLabel(d);
-  wrap.append(bubble, time);
+  if (role === "assistant") {
+    const card = document.createElement("div");
+    card.className = "card";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    card.append(bubble, meta);
+    wrap.append(lbl, card);
+    setMeta(wrap, extra);
+  } else {
+    wrap.append(lbl, bubble);
+  }
   log.appendChild(wrap);
   log.scrollTop = log.scrollHeight;
   return bubble;
@@ -272,7 +376,7 @@ async function openConversation(id) {
   const conv = await res.json();
   conversationId = id;
   resetLog();
-  for (const m of conv.messages) addMessage(m.role, m.text, m.at);
+  for (const m of conv.messages) addMessage(m.role, m.text, m.at, m);
   setEmpty(conv.messages.length === 0);
   setHash(id);
   renderHistory();
@@ -283,8 +387,10 @@ async function openConversation(id) {
 async function submit(text) {
   if (send.disabled) return;
   setEmpty(false);
+  if (!conversationId) $("chat-title").textContent = text.slice(0, 60); // until the sidebar learns the real title
   addMessage("user", text);
   const bubble = addMessage("assistant", "Thinking…");
+  const wrap = bubble.closest(".msg");
   let reply = "";
   let remembered = [];
   send.disabled = true;
@@ -311,6 +417,8 @@ async function submit(text) {
         if (event === "meta") {
           conversationId = data.conversationId;
           setHash(conversationId);
+        } else if (event === "done") {
+          setMeta(wrap, data.assistantMessage || {}); // time measured by the server, searches from its log
         } else if (event === "profile") {
           remembered = data.saved;
         } else if (event === "status") {
@@ -326,9 +434,9 @@ async function submit(text) {
         }
       }
     }
-    showRemembered(bubble.parentElement, remembered);
+    showRemembered(wrap, remembered);
   } catch (err) {
-    bubble.parentElement.className = "msg error";
+    wrap.classList.add("error");
     bubble.textContent = err.message;
   } finally {
     send.disabled = false;
@@ -359,6 +467,7 @@ input.addEventListener("input", () => {
   input.style.height = `${input.scrollHeight}px`;
 });
 $("new-chat").addEventListener("click", startNewChat);
+for (const b of document.querySelectorAll("#theme-seg button")) b.addEventListener("click", () => setTheme(b.dataset.themePref));
 $("open-profile").addEventListener("click", openProfile);
 $("profile-close").addEventListener("click", () => dialog.close());
 dialog.addEventListener("click", (e) => {
@@ -374,7 +483,7 @@ $("scrim").addEventListener("click", () => document.body.classList.remove("nav-o
 
 // A reload (or a shared link with #<id>) reopens that chat; otherwise show the landing screen.
 (async function boot() {
-  renderChips();
+  applyTheme(themePref()); // marks the right button in the profile panel
   updateGreeting();
   updateProfileButton();
   const id = window.location.hash.slice(1);

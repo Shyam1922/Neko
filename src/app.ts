@@ -107,7 +107,8 @@ export function createApp({ store, llm, search, profile, publicDir, now = () => 
         }
       }
       if (!reply.trim()) throw new Error("The model returned an empty reply.");
-      const done = await store.append(conv.id, { role: "assistant", text: reply, tz, searches, recall });
+      const ms = Date.now() - started; // the whole turn: routing, searching and writing
+      const done = await store.append(conv.id, { role: "assistant", text: reply, tz, searches, recall, ms });
       console.log(`[chat] ${conv.id.slice(0, 8)} first-token ${firstTokenMs}ms total ${Date.now() - started}ms searches ${searches.length}`);
       send("done", { assistantMessage: done.message });
     } catch (err: any) {

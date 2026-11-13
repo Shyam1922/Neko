@@ -27,6 +27,7 @@ export interface Message {
   tz: string; // timezone the user was in when it was sent
   searches: SearchLog[];
   recall?: RecallMeta;
+  ms?: number; // for an assistant reply: how long it took, request to finished answer
 }
 
 // A fact an earlier answer asserted. Always tied to a message and a verbatim quote.
@@ -133,7 +134,7 @@ export class JsonStore {
   // Appends a message, creating the conversation when conversationId is undefined.
   append(
     conversationId: string | undefined,
-    m: { role: Message["role"]; text: string; tz?: string; searches?: SearchLog[]; recall?: RecallMeta },
+    m: { role: Message["role"]; text: string; tz?: string; searches?: SearchLog[]; recall?: RecallMeta; ms?: number },
   ): Promise<{ conversation: Conversation; message: Message }> {
     return this.serial(async () => {
       const at = this.now().toISOString();
@@ -156,6 +157,7 @@ export class JsonStore {
         tz: safeTimeZone(m.tz),
         searches: m.searches ?? [],
         ...(m.recall ? { recall: m.recall } : {}),
+        ...(m.ms !== undefined ? { ms: Math.round(m.ms) } : {}),
       };
       conv.messages.push(message);
       conv.lastAt = at;

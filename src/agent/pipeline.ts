@@ -89,7 +89,8 @@ export function formatDiff(items: DiffItem[], tz: string, omitted = 0): string {
 
 const DIFF_RULES = [
   "You are reporting a then-versus-now check. Findings below were computed by code from the earlier conversation and today's sources.",
-  "Start with the bottom line. Use the verdicts exactly as given (changed, unchanged, couldn't verify, no baseline); never upgrade a 'could not verify' into a guess.",
+  "Start with the bottom line. Use the verdicts exactly as given; never upgrade a 'could not verify' into a guess.",
+  "Write each item's verdict as its exact uppercase label (CHANGED, UNCHANGED, COULD NOT VERIFY, NO BASELINE) straight after the item name, e.g. \"- Storage rate: UNCHANGED\". The page turns those labels into badges, so use those capitalised words nowhere else.",
   "Say when the earlier values were stated, and say plainly when an earlier value came from your own knowledge rather than a search.",
   "Cite the source URL for every current value. Add no facts that are not in the findings.",
 ].join("\n");

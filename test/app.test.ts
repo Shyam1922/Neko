@@ -54,6 +54,10 @@ test("chat streams tokens and persists both messages", async () => {
   assert.deepEqual(evs.map((e) => e.event), ["meta", "token", "token", "done"]);
   const conv = await store.get(evs[0].data.conversationId);
   assert.deepEqual(conv?.messages.map((m) => [m.role, m.text]), [["user", "hi"], ["assistant", "Hello there."]]);
+  // How long the answer took is stored on the reply and sent with the "done" event, so history shows it too.
+  assert.equal(typeof conv?.messages[1].ms, "number");
+  assert.equal(conv?.messages[0].ms, undefined); // only replies are timed
+  assert.equal(evs[3].data.assistantMessage.ms, conv?.messages[1].ms);
   assert.match(llm.last!.system, /Thursday, 12 November 2026/);
   close();
 });
