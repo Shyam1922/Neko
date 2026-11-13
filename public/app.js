@@ -470,6 +470,14 @@ $("new-chat").addEventListener("click", startNewChat);
 for (const b of document.querySelectorAll("#theme-seg button")) b.addEventListener("click", () => setTheme(b.dataset.themePref));
 $("open-profile").addEventListener("click", openProfile);
 $("profile-close").addEventListener("click", () => dialog.close());
+
+// "What does Recall do for you?": a plain list of what it can do, from the landing screen or the "?" in the top bar.
+const about = $("about-dialog");
+for (const id of ["open-about", "open-about-top"]) $(id).addEventListener("click", () => about.showModal());
+$("about-close").addEventListener("click", () => about.close());
+about.addEventListener("click", (e) => {
+  if (e.target === about) about.close();
+});
 dialog.addEventListener("click", (e) => {
   if (e.target === dialog) dialog.close(); // a click on the dimmed backdrop closes it
 });

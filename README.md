@@ -21,6 +21,10 @@ Most chatbots can search the web, but they can't connect *"what you asked me las
 | "I'm Alex, I'm based in Lisbon and I prefer short answers" | Remembers it, tailors this and every later answer to you, and greets you by name. See [Personalisation](#personalisation). |
 | "What is the capital of France?" | Answers directly. No search, no memory lookup. |
 
+You don't need to read this to find out: the app explains itself. **What can Recall do?** (a link under the input on the landing screen, and the sparkle button in the top bar) lists the features in plain language.
+
+![The "What Recall can do for you" panel, in the dark theme](docs/screenshots/features.jpg)
+
 Every answer sits in a card with its evidence underneath: how long it took, how many searches ran, and which sites they returned.
 
 ![A web-searched answer in a card, with time taken, searches run and the sites checked](docs/screenshots/research.jpg)

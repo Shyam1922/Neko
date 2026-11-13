@@ -33,6 +33,10 @@
       <header id="topbar">
         <button id="menu" type="button" aria-label="Show chat history">☰</button>
         <div id="chat-title"></div>
+        <button id="open-about-top" type="button" class="pill-btn" aria-label="What can Recall do?" title="See what Recall can do">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M10 3l1.9 5.4L17.3 10l-5.4 1.9L10 17.3 8.1 11.9 2.7 10l5.4-1.6L10 3z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"/></svg>
+          <span>What can Recall do?</span>
+        </button>
         <button id="open-profile" type="button" aria-label="Your profile and what I remember about you">
           <span class="who">
             <span id="who-name">Your profile</span>
@@ -44,19 +48,54 @@
 
       <div id="landing">
         <p id="greeting" class="eyebrow">Hello</p>
-        <h1>What should we look into?</h1>
-        <p class="sub">I remember past chats, check the live web, and tell you what changed.</p>
+        <h1>What can I look into for you?</h1>
+        <p class="sub">Research with live sources, and pick up right where you left off.</p>
       </div>
 
       <main id="log" aria-live="polite"></main>
 
       <form id="form">
-        <textarea id="input" rows="1" placeholder="Ask anything, or ask what changed since last time…" autofocus></textarea>
+        <textarea id="input" rows="1" placeholder="Ask anything…" autofocus></textarea>
         <button id="send" type="submit" aria-label="Send">Send</button>
       </form>
       <p id="status-line"></p>
+      <button id="open-about" type="button" class="link-btn">What can Recall do?</button>
     </section>
   </div>
+
+  <dialog id="about-dialog" aria-labelledby="about-title">
+    <div class="dlg-head">
+      <h2 id="about-title">What Recall can do for you</h2>
+      <button id="about-close" type="button" aria-label="Close">×</button>
+    </div>
+    <ul class="features">
+      <li>
+        <h3>Researches the live web</h3>
+        <p>Searches current sources and links them in the answer. Under every reply you can see how long it took, how many searches ran and which sites it checked.</p>
+      </li>
+      <li>
+        <h3>Remembers your conversations</h3>
+        <p>Ask about an earlier chat by day or topic, like "What did we discuss on Tuesday?", and it finds it and quotes what was actually said.</p>
+      </li>
+      <li>
+        <h3>Fact-checks what it told you before</h3>
+        <p>Ask "is that still right?" and it re-checks its earlier answers against today's sources, then marks each point
+          <span class="badge b-changed">Changed</span> <span class="badge b-same">Unchanged</span> <span class="badge b-unv">Couldn't verify</span> or <span class="badge b-none">No baseline</span>.</p>
+      </li>
+      <li>
+        <h3>Learns how you like to work</h3>
+        <p>Tell it your name, where you're based or how you like answers ("short, with bullet points") and it remembers. You can see, edit or delete everything in Your profile.</p>
+      </li>
+      <li>
+        <h3>Says so when it doesn't know</h3>
+        <p>If it has no record of something, or can't confirm it, it tells you instead of guessing.</p>
+      </li>
+      <li>
+        <h3>Keeps your data with you</h3>
+        <p>Your chats and profile are stored on this computer. Only the questions sent to the model and to search leave it.</p>
+      </li>
+    </ul>
+  </dialog>
 
   <dialog id="profile-dialog" aria-labelledby="profile-title">
     <div class="dlg-head">
