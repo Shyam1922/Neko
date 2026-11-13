@@ -1,4 +1,4 @@
-// What Recall knows about the user: facts they stated themselves ("I run a 20-person sales team").
+// What Recall knows about the user: facts they stated themselves ("I prefer short answers").
 // Stored apart from conversations, in <data>/profile/facts.json, so the user can see, edit and
 // delete every fact. One fact per key: a newer statement replaces the older one.
 

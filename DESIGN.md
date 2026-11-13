@@ -12,7 +12,7 @@ One turn: **route → memory lookup → (claims → search → compare) → answ
 4. **No record is not a dead end.** "Has pricing changed since last Tuesday?" can be answered from the web alone, so without a stored baseline Recall says so first, then searches what changed after the date code resolved.
 5. **Answer** (1 model call, streamed) receives only verified findings and has no search tool in that case, so it cannot add unverified ones. "That's wrong" excludes the recalled chat and retries; after a second miss it asks a concrete question.
 
-Facts the user states about themselves ("we're a 20-person team") are picked out by the same router call, kept only as verbatim quotes, and shown in an editable panel, so personalisation costs no extra call.
+Facts the user states about themselves ("I prefer short answers") are picked out by the same router call and kept only as verbatim quotes, so personalisation costs no extra call. Because they are saved automatically, a panel lets the user see, correct and delete every one. All data is local: conversations and the profile live in `data/`, and only model and search calls leave the machine.
 
 A casual chat costs 2 model calls; a then-versus-now check 3 (4 the first time).
 

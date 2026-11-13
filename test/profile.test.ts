@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { MAX_FACTS, ProfileStore } from "../src/memory/profile.ts";
 import { JsonStore } from "../src/memory/store.ts";
-import { acceptCandidates, cleanKey, cleanValue, labelOf, profileBlock } from "../src/agent/personalize.ts";
+import { acceptCandidates, cleanValue, labelOf, profileBlock } from "../src/agent/personalize.ts";
 import { validateDecision } from "../src/agent/router.ts";
 
 const tmp = () => mkdtemp(path.join(os.tmpdir(), "recall-prof-"));
@@ -52,13 +52,6 @@ test("cleanValue rejects secrets, emails, long numbers, and over-long or empty v
     assert.equal(cleanValue(bad), null, String(bad));
   }
   assert.equal(cleanValue("500000 a month"), "500000 a month"); // a budget is fine
-});
-
-test("cleanKey turns typed labels into keys and rejects unusable or sensitive ones", () => {
-  assert.equal(cleanKey("Team size"), "team_size");
-  assert.equal(cleanKey("  Answer   format!! "), "answer_format");
-  assert.equal(cleanKey("x".repeat(60))?.length, 30);
-  for (const bad of ["", "!!!", "1abc", "a", "Password", "api key", "Credit card", 5, null]) assert.equal(cleanKey(bad), null, String(bad));
 });
 
 test("acceptCandidates: verbatim quote required, sane keys only, deduped, capped", () => {

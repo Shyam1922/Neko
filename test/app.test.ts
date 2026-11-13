@@ -97,29 +97,6 @@ test("profile endpoints: list, edit with validation, delete one, clear all; the 
   close();
 });
 
-test("adding a fact by hand: label becomes a key, same safety checks, replaces by key, refuses when full", async () => {
-  const { base, profile, close } = await start(new FakeLlm());
-  const post = (body: unknown) => fetch(`${base}/api/profile`, { method: "POST", body: JSON.stringify(body) });
-
-  const ok = await post({ key: "Team size", value: " 20   people " });
-  assert.equal(ok.status, 200);
-  const fact = await ok.json();
-  assert.deepEqual([fact.key, fact.value], ["team_size", "20 people"]);
-
-  const again = await (await post({ key: "team size", value: "25 people" })).json(); // same key: replaced, not duplicated
-  assert.equal(again.id, fact.id);
-  assert.equal((await profile.list()).length, 1);
-
-  for (const bad of [{ key: "", value: "x" }, { key: "Team", value: "" }, { key: "!!!", value: "x" }, { key: "Password", value: "x" }, { key: "Contact", value: "me@example.com" }, { key: "Phone", value: "9876543210" }, { value: "x" }]) {
-    assert.equal((await post(bad)).status, 400, JSON.stringify(bad));
-  }
-
-  for (let i = 0; i < 39; i++) await profile.upsert({ key: `k_${i}`, value: "v", quote: "q" }, { conversationId: "c", messageId: "m" });
-  assert.equal((await post({ key: "One more", value: "x" })).status, 409); // 40 facts already
-  assert.equal((await post({ key: "Team size", value: "30 people" })).status, 200); // existing keys can still change
-  close();
-});
-
 test("conversation endpoints and static files work; path traversal is blocked", async () => {
   const { base, close } = await start(new FakeLlm());
   const evs = events(await (await post(base, { text: "hi" })).text());

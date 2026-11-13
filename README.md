@@ -18,7 +18,7 @@ Most chatbots can search the web, but they can't connect *"what you asked me las
 | "Has any of that changed since I asked on Monday?" | Finds that earlier conversation, re-checks each fact, and reports **changed / unchanged / couldn't verify / no baseline**, with sources. If there is no record of that chat, it says so first, then searches what changed on the web since that date. |
 | "Did we ever talk about Uganda?" | Lists every earlier chat that mentions it, with times and your exact words. |
 | "No, that's not the one I meant" | Excludes that conversation and tries the next candidate; after a second miss it asks which one you mean. |
-| "I'm Alex, I run sales for a 20-person team and I prefer short answers" | Remembers it, tailors this and every later answer to you (a pricing question comes back as a cost for 20 seats), and greets you by name. See [Personalisation](#personalisation). |
+| "I'm Alex, I'm based in Lisbon and I prefer short answers" | Remembers it, tailors this and every later answer to you, and greets you by name. See [Personalisation](#personalisation). |
 | "What is the capital of France?" | Answers directly. No search, no memory lookup. |
 
 ![A cited, web-searched answer](docs/screenshots/research.jpg)
@@ -31,10 +31,10 @@ The worst failure for an assistant like this is **inventing a past that never ha
 
 Recall remembers what you tell it about yourself and uses it to tailor answers:
 
-- **Facts you state** ("I'm Alex", "we're a 20-person team", "my budget is 500 a month", "I'm based in Lisbon", "I prefer short answers") are saved automatically and used in every later chat, so you never repeat them. It also greets you by name.
+- **Facts you state** ("I'm Alex", "I'm a freelance designer", "my budget is 500 a month", "I'm based in Lisbon", "I prefer short answers") are saved automatically and used in every later chat, so you never repeat them. It also greets you by name.
 - **Local context.** A saved currency or region steers how prices are shown. Recall never converts currencies from memory: if a source only gives another currency, it shows that and says so.
 - **Tone and format.** A stated preference for short answers, bullets or detail is followed.
-- **You stay in control.** Under each reply Recall says what it just remembered, with **Undo**. **What I know about you** (bottom of the sidebar) lists every saved fact: edit one, delete one, add one by hand (for example *Team size: 20 people*), or forget everything. Facts you add by hand go through the same safety checks.
+- **You stay in control.** Under each reply Recall says what it just remembered, with **Undo**. **What I know about you** (bottom of the sidebar) lists every saved fact, so you can check what it learned, correct a value, delete one, or forget everything. Everything stays on your machine: nothing leaves it except the model and search calls.
 
 How it stays trustworthy: nothing is inferred. The router that already reads each message proposes facts you stated, and code keeps one only if it is a **verbatim quote** from your message, is short, and does not look like a secret, an email or an ID number (passwords, API keys, card or phone numbers and health details are never stored). That costs **no extra model call**. Facts live in `data/profile/facts.json` on your machine (git-ignored); a newer statement replaces an older one for the same key.
 

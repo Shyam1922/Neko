@@ -148,7 +148,7 @@ function renderProfile() {
   if (!profile.length) {
     const p = document.createElement("p");
     p.className = "hint";
-    p.textContent = "Nothing yet. Tell me about yourself in a chat, for example \"I'm Alex and I run sales for a 20-person team\", and I'll remember it, or add something below.";
+    p.textContent = "Nothing yet. As we chat, tell me things about yourself, such as \"I prefer short answers\" or \"I'm based in Lisbon\", and I'll remember them here.";
     list.appendChild(p);
     return;
   }
@@ -350,15 +350,6 @@ $("open-profile").addEventListener("click", openProfile);
 $("profile-close").addEventListener("click", () => dialog.close());
 dialog.addEventListener("click", (e) => {
   if (e.target === dialog) dialog.close(); // a click on the dimmed backdrop closes it
-});
-$("profile-add").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const res = await fetch("/api/profile", { method: "POST", body: JSON.stringify({ key: $("add-key").value, value: $("add-value").value }) });
-  if (!res.ok) return profileError((await res.json().catch(() => ({}))).error || "Couldn't save that.");
-  $("add-key").value = "";
-  $("add-value").value = "";
-  await loadProfile();
-  $("add-key").focus();
 });
 $("profile-clear").addEventListener("click", async () => {
   if (!confirm("Forget everything I know about you? This can't be undone.")) return;

@@ -5,7 +5,7 @@ import { friendlyMessage } from "./adapters/errors.ts";
 import type { Llm } from "./adapters/llm.ts";
 import type { Search } from "./adapters/search.ts";
 import { runAgent } from "./agent/pipeline.ts";
-import { cleanKey, cleanValue } from "./agent/personalize.ts";
+import { cleanValue } from "./agent/personalize.ts";
 import type { ProfileStore } from "./memory/profile.ts";
 import { isValidId, type JsonStore, type RecallMeta, type SearchLog } from "./memory/store.ts";
 import { safeTimeZone } from "./memory/dates.ts";
@@ -148,22 +148,6 @@ export function createApp({ store, llm, search, profile, publicDir, now = () => 
       if (pathname === "/api/profile") {
         if (req.method === "GET") return sendJson(res, 200, await profile.list());
         if (req.method === "DELETE") return await profile.clear(), sendJson(res, 200, { ok: true });
-        if (req.method === "POST") {
-          // The user adds a fact by hand in the panel. Same safety checks as facts picked up from chat.
-          let body: { key?: unknown; value?: unknown } = {};
-          try {
-            body = JSON.parse(await readBody(req));
-          } catch {
-            /* handled below */
-          }
-          const key = cleanKey(body.key);
-          const value = cleanValue(body.value);
-          if (!key || !value) {
-            return sendJson(res, 400, { error: "Give a short label (letters and numbers) and a value up to 120 characters. Secrets, emails and ID numbers can't be saved." });
-          }
-          const saved = await profile.upsert({ key, value, quote: "(added by you in the panel)" }, { conversationId: "manual", messageId: "manual" });
-          return saved ? sendJson(res, 200, saved.fact) : sendJson(res, 409, { error: "Your profile is full. Remove something first." });
-        }
       }
       const pf = pathname.match(/^\/api\/profile\/([^/]+)$/);
       if (pf && req.method === "DELETE") {

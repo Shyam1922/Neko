@@ -43,12 +43,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pf-row input:hover, .pf-row input:focus { border-color: var(--line); outline: 0; }
 .pf-del { border: 0; background: transparent; color: var(--muted); font-size: 18px; padding: 0 6px; }
 .pf-del:hover { color: var(--err); }
-#profile-add { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
-#profile-add input { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; background: transparent; color: var(--fg); font: inherit; font-size: 14px; }
-#profile-add input:focus { outline: 0; border-color: var(--muted); }
-#add-key { width: 38%; }
-#add-value { flex: 1; }
-#profile-add button { border: 0; border-radius: 8px; padding: 0 14px; background: var(--accent); color: var(--accent-fg); font-size: 14px; }
 .dlg-foot { margin-top: 14px; text-align: right; }
 #profile-clear { border: 1px solid var(--line); border-radius: 8px; background: transparent; padding: 6px 12px; font-size: 13px; color: var(--muted); }
 #profile-clear:hover { color: var(--err); border-color: var(--err); }

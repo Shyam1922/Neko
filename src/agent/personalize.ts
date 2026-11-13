@@ -28,13 +28,6 @@ export function cleanValue(v: unknown): string | null {
   return value;
 }
 
-/** Turns a label typed by hand ("Team size") into a stored key ("team_size"), or null if it isn't usable. */
-export function cleanKey(k: unknown): string | null {
-  if (typeof k !== "string") return null;
-  const key = k.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30);
-  return KEY_RE.test(key) && !SENSITIVE.test(key) ? key : null;
-}
-
 /** Keeps only the proposed facts that are safe and really are the user's own words. */
 export function acceptCandidates(proposed: Candidate[], userText: string): Candidate[] {
   const out: Candidate[] = [];

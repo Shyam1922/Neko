@@ -34,7 +34,7 @@ const SCHEMA = {
         type: "object",
         properties: {
           key: { type: "string", description: "snake_case label: name, role, company, team_size, budget, location, currency, answer_length, answer_format, or another short snake_case label." },
-          value: { type: "string", description: "The fact, short, e.g. 'Alex', '20 people', 'INR', 'short answers'." },
+          value: { type: "string", description: "The fact, short, e.g. 'Alex', 'Lisbon', 'euros', 'short answers'." },
           quote: { type: "string", description: "The user's exact words from the latest message that state it." },
         },
         required: ["key", "value", "quote"],
@@ -51,7 +51,7 @@ const SYSTEM = [
   "- research: needs current web information, and does not refer to an earlier conversation.",
   "- memory: asks what was said or asked in an earlier conversation, with no need for fresh information.",
   "- memory_research: refers to an earlier conversation AND wants to know what changed, or whether it is still correct today.",
-  "profile_updates: only facts the user plainly states about themselves in the LATEST message, such as 'I'm Alex', 'we're a 20-person sales team', 'my budget is $500 a month', 'I'm based in Lisbon', 'I prefer short answers', 'I like bullet points'. Never infer, never guess, never use facts about other people, hypotheticals or earlier messages. Never include passwords, keys, card or ID numbers, emails, phone numbers or health details.",
+  "profile_updates: only facts the user plainly states about themselves in the LATEST message, such as 'I'm Alex', 'I'm a freelance designer', 'my budget is $500 a month', 'I'm based in Lisbon', 'I prefer short answers', 'I like bullet points'. Never infer, never guess, never use facts about other people, hypotheticals or earlier messages. Never include passwords, keys, card or ID numbers, emails, phone numbers or health details.",
   "Do not resolve dates; copy the user's own time words. If the user only says 'last time' or 'when I last asked' with no actual day, leave time_phrase empty. Output only JSON.",
 ].join("\n");
 
