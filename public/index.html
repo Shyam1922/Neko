@@ -12,7 +12,13 @@
       <div class="brand">Recall</div>
       <button id="new-chat" type="button">+ New chat</button>
       <nav id="history" aria-label="Recent chats"></nav>
-      <button id="open-profile" type="button">What I know about you</button>
+      <button id="open-profile" type="button" aria-label="Your profile and what I remember about you">
+        <span id="avatar" aria-hidden="true"></span>
+        <span class="who">
+          <span id="who-name">Your profile</span>
+          <span id="who-sub">Nothing remembered yet</span>
+        </span>
+      </button>
     </aside>
     <div id="scrim"></div>
 

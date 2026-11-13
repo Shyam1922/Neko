@@ -41,6 +41,18 @@ function greeting() {
 }
 const updateGreeting = () => ($("greeting").textContent = greeting());
 
+// The profile button: your initial (or a person icon until Recall knows your name) and how much it remembers.
+const PERSON_ICON =
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
+function updateProfileButton() {
+  const name = profile.find((f) => f.key === "name")?.value;
+  const initial = name ? [...name.trim()][0] : "";
+  if (initial) $("avatar").textContent = initial.toUpperCase();
+  else $("avatar").innerHTML = PERSON_ICON; // static markup, no user text
+  $("who-name").textContent = name || "Your profile";
+  $("who-sub").textContent = profile.length ? `${profile.length} thing${profile.length === 1 ? "" : "s"} remembered` : "Nothing remembered yet";
+}
+
 const setEmpty = (empty) => main.classList.toggle("empty", empty);
 
 function renderChips() {
@@ -131,6 +143,7 @@ async function loadProfile() {
     /* personalisation is optional; the app works without it */
   }
   updateGreeting();
+  updateProfileButton();
   if (dialog.open) renderProfile();
 }
 
@@ -363,6 +376,7 @@ $("scrim").addEventListener("click", () => document.body.classList.remove("nav-o
 (async function boot() {
   renderChips();
   updateGreeting();
+  updateProfileButton();
   const id = window.location.hash.slice(1);
   if (id) await openConversation(id);
   loadHistory();
