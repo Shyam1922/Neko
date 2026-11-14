@@ -5,7 +5,10 @@ export interface Config {
   model: string;
   port: number;
   dataDir: string;
+  modelTimeoutMs: number; // how long to wait for the model to answer before showing an error
 }
+
+export const DEFAULT_MODEL_TIMEOUT_SECONDS = 45;
 
 export interface SearchConfig {
   url: string;
@@ -26,11 +29,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new ConfigError(`PORT must be 0-65535, got "${env.PORT}".`);
   }
+  // Stronger models can take much longer than the default fast one, so this is adjustable.
+  const seconds = Number(env.MODEL_TIMEOUT_SECONDS?.trim() || DEFAULT_MODEL_TIMEOUT_SECONDS);
+  if (!Number.isFinite(seconds) || seconds < 5 || seconds > 600) {
+    throw new ConfigError(`MODEL_TIMEOUT_SECONDS must be a number from 5 to 600, got "${env.MODEL_TIMEOUT_SECONDS}".`);
+  }
   return {
     geminiApiKey,
     model: env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
     port,
     dataDir: env.DATA_DIR?.trim() || "data",
+    modelTimeoutMs: Math.round(seconds * 1000),
   };
 }
 

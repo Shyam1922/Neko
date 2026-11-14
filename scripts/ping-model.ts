@@ -4,7 +4,7 @@ import { loadConfig } from "../src/config.ts";
 import { GeminiLlm } from "../src/adapters/llm.ts";
 
 const cfg = loadConfig();
-const llm = new GeminiLlm(cfg.geminiApiKey, cfg.model);
+const llm = new GeminiLlm(cfg.geminiApiKey, cfg.model, cfg.modelTimeoutMs);
 console.log(`model=${cfg.model} key=...${cfg.geminiApiKey.slice(-4)}`);
 
 const t0 = Date.now();

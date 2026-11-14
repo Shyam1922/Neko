@@ -22,7 +22,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = path.resolve(root, config.dataDir);
 const store = new JsonStore(dataDir);
 const profile = new ProfileStore(dataDir);
-const llm = new GeminiLlm(config.geminiApiKey, config.model);
+const llm = new GeminiLlm(config.geminiApiKey, config.model, config.modelTimeoutMs);
 const search = new CachedSearch(new ParallelSearch(searchConfig()));
 const app = createApp({ store, llm, search, profile, publicDir: path.join(root, "public") });
 

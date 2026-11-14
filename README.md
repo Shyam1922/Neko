@@ -68,6 +68,7 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | --- | --- | --- | --- |
 | `GEMINI_API_KEY` | yes | | Free key from Google AI Studio |
 | `GEMINI_MODEL` | no | `gemini-3.5-flash-lite` | Run `npm run check:models` to see what your key can use |
+| `MODEL_TIMEOUT_SECONDS` | no | `45` | How long to wait for the model before showing an error; raise it for slower models |
 | `PARALLEL_API_KEY` | no | | Higher limits on the hosted search server; works without it |
 | `SEARCH_MCP_URL` | no | `https://search.parallel.ai/mcp` | Search server (MCP over HTTP) |
 | `PORT` | no | `3000` | |
@@ -83,6 +84,8 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | `npm run ping:model` | One tiny model call with timings; tells key/network problems apart from app problems |
 | `npm run check:models` | Lists the models your key can call |
 | `npm run probe:search` | Connects to the search server and prints its tools and a sample result |
+
+**Using a paid key or a stronger model.** The default, `gemini-3.5-flash-lite`, is the fastest option and works on free keys. A stronger model can give fuller answers but is slower: in one test on a free key, `gemini-3.5-flash` took 57 seconds for a search question against 6.8 seconds for the default, and `gemini-3.8-flash` gave no answer within 150 seconds. These were single runs. A paid key has higher limits and may be quicker, which I haven't been able to test. To switch, set `GEMINI_MODEL` and raise `MODEL_TIMEOUT_SECONDS` (see `npm run check:models` for what your key can use).
 
 **Troubleshooting.** If the configured model isn't available for your key, Neko switches to the newest flash-lite model your key can use and logs the switch; to choose one yourself, pick from `npm run check:models` and set `GEMINI_MODEL`. Free-tier rate limits and Google's occasional "high demand" errors are retried automatically and otherwise shown with Google's own reason.
 

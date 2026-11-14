@@ -99,7 +99,7 @@ export function toContents(history: Turn[]): Content[] {
 export class GeminiLlm implements Llm {
   private ai: GoogleGenAI;
   private triedFallback = false;
-  constructor(apiKey: string, private model: string) {
+  constructor(apiKey: string, private model: string, private firstTokenTimeoutMs = FIRST_TOKEN_TIMEOUT_MS) {
     this.ai = new GoogleGenAI({ apiKey });
   }
 
@@ -153,7 +153,7 @@ export class GeminiLlm implements Llm {
               responseJsonSchema: req.schema,
             },
           }),
-          FIRST_TOKEN_TIMEOUT_MS,
+          this.firstTokenTimeoutMs,
           "the model's structured reply",
         );
         return JSON.parse(res.text ?? "");
@@ -183,13 +183,13 @@ export class GeminiLlm implements Llm {
             : undefined,
         },
       }),
-      FIRST_TOKEN_TIMEOUT_MS,
+      this.firstTokenTimeoutMs,
       "the model to start responding",
     );
     const it = stream[Symbol.asyncIterator]();
     let first = true;
     while (true) {
-      const ms = first ? FIRST_TOKEN_TIMEOUT_MS : IDLE_TIMEOUT_MS;
+      const ms = first ? this.firstTokenTimeoutMs : IDLE_TIMEOUT_MS;
       const next = await withTimeout(it.next(), ms, first ? "the first token" : "the next token");
       if (next.done) return;
       first = false;
