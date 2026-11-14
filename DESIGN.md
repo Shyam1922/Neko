@@ -37,4 +37,4 @@ Verified on a handful of real conversations (Gemini 3.5 Flash-Lite plus the live
 
 ## With another week
 
-An evaluation harness with golden conversations; a "what shipped since" search driven by source dates; lower latency (skip the router on obvious chat, overlap search and extraction); source-quality scoring (official pages over aggregators); a second model provider as fallback; generated chat titles.
+Nudges: scheduled re-checks of past answers, so Neko speaks up only when something you asked about has actually changed. The stored claims and the then-versus-now comparison already give the baseline; what is missing is a scheduler and a quiet-by-default notifier. Also: an evaluation harness with golden conversations; a "what shipped since" search driven by source dates; lower latency (skip the router on obvious chat, overlap search and extraction); source-quality scoring (official pages over aggregators); a second model provider as fallback; generated chat titles.
