@@ -2,6 +2,31 @@
 
 A running log of what was chosen, what else was on the table, and why. Newest first.
 
+## 2026-11-26 · Task 2: deploy, limits, logging
+
+**Limits count rows that already exist.**
+- Chose: the per-user hourly limit and the global daily limit run `count(*)` over recent user messages, backed by partial indexes on `messages (user_id, at)` and `messages (at)` where `role = 'user'`.
+- Alternatives: an in-memory counter (lost on restart, wrong with two instances); Redis (another service to run for a demo); a separate counters table (duplicates what `messages` already records).
+- Why: the messages table is already the source of truth, so the limit can't drift from what actually happened, and it holds across restarts and instances.
+- The per-IP limit on new users is in memory (a sliding window), because there is no row to count for a refused visitor. It resets on restart, which is acceptable: it only stops someone clearing cookies to get a fresh hourly allowance.
+- Limits are on by default, and `0` turns one off. A deploy that forgets the variables is still protected.
+- Behind a proxy, the client IP is the *last* `X-Forwarded-For` entry, the one the proxy added. Earlier entries come from the client and can be forged. The header is ignored unless `TRUST_PROXY` is set.
+
+**One JSON log line per turn.**
+- Fields: route, total ms, router ms, first-token ms, model calls, searches, search errors, message and reply length, outcome.
+- Model calls are counted by wrapping the `Llm` interface for the turn, so no agent code had to report them.
+- Users are logged as a 10-character SHA-256 prefix. The raw id is the login cookie: logging it would let anyone with log access act as that user.
+- Logs are for operations. Usage numbers come from the database (`npm run stats`), which outlives log retention.
+
+**Runtime: tsx in production, no build step.**
+- Alternatives: compile with `tsc` to JavaScript (a second code path to keep in sync); Node's built-in type stripping (it doesn't support constructor parameter properties, which the stores use).
+- Cost: tsx becomes a runtime dependency and adds a moment to startup. Acceptable for this size.
+
+**Hosting: Render blueprint, Docker everywhere.**
+- The same Dockerfile runs in `docker compose` and on Render, so "works locally" means "works deployed".
+- Compose uses the `pgvector/pgvector` image so Task 3 needs no infrastructure change.
+- `/healthz` checks the database too, so the platform restarts an instance that lost its connection.
+
 ## 2026-11-26 · Task 1: multi-user, SQL storage
 
 **Postgres, with an embedded PGlite fallback.**

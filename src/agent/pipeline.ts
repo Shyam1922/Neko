@@ -37,6 +37,7 @@ export type SavedFact = { id: string; key: string; value: string; previous?: str
 export type AgentEvent =
   | TurnEvent
   | { type: "status"; text: string }
+  | { type: "route"; route: string; ms: number } // which path the router chose and how long it took, for the turn log
   | { type: "recall"; meta: RecallMeta }
   | { type: "profile"; saved: SavedFact[] }; // facts about the user remembered from this message
 
@@ -173,7 +174,7 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
 
   const routeStart = Date.now();
   const decision = await route(llm, conv.messages, now(), tz, signal);
-  console.log(`[route] ${decision.route}${decision.timePhrase ? ` time="${decision.timePhrase}"` : ""} ${Date.now() - routeStart}ms`);
+  yield { type: "route", route: decision.route, ms: Date.now() - routeStart };
 
   // Personalisation: save what the user said about themselves (verified quotes only), then use it for this very reply.
   const userMsg = conv.messages[conv.messages.length - 1];

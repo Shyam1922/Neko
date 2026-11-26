@@ -23,11 +23,13 @@ const db = await openDb(
 );
 const llm = new GeminiLlm(config.geminiApiKey, config.model, config.modelTimeoutMs);
 const search = new CachedSearch(new ParallelSearch(searchConfig()));
-const app = createApp({ db, llm, search, publicDir: path.join(root, "public") });
+const app = createApp({ db, llm, search, publicDir: path.join(root, "public"), limits: config.limits });
 
 app.listen(config.port, () => {
   // Last 4 characters only: enough to confirm which key the server loaded.
+  const l = config.limits;
   console.log(`Neko on http://localhost:${config.port}  model=${config.model}  db=${db.kind}  key=...${config.geminiApiKey.slice(-4)}`);
+  console.log(`Limits: ${l.turnsPerHour || "no"} turns/hour per user, ${l.turnsPerDay || "no"} turns/day in total, ${l.newUsersPerIpPerHour || "no"} new users/hour per IP${l.trustProxy ? " (client IP from X-Forwarded-For)" : ""}`);
 });
 
 // Platforms stop containers with SIGTERM: finish by closing the database cleanly (PGlite flushes to disk).

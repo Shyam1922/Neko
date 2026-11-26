@@ -12,18 +12,19 @@
     "probe:search": "tsx --env-file-if-exists=.env scripts/probe-search.ts",
     "check:models": "tsx --env-file-if-exists=.env scripts/check-models.ts",
     "ping:model": "tsx --env-file-if-exists=.env scripts/ping-model.ts",
-    "import:json": "tsx --env-file-if-exists=.env scripts/import-json.ts"
+    "import:json": "tsx --env-file-if-exists=.env scripts/import-json.ts",
+    "stats": "tsx --env-file-if-exists=.env scripts/stats.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.6.0",
     "@google/genai": "^3.2.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/pg": "^8.23.1",
-    "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }
 }

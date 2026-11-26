@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ConfigError, loadConfig } from "../src/config.ts";
+import { ConfigError, DEFAULT_LIMITS, loadConfig } from "../src/config.ts";
 
 const base = { GEMINI_API_KEY: "k" };
 
@@ -25,4 +25,13 @@ test("a bad timeout fails at startup with a clear message, not as a mystery late
 
 test("a missing key explains how to get one", () => {
   assert.throws(() => loadConfig({}), /aistudio\.google\.com\/apikey/);
+});
+
+test("rate limits are on by default, can be changed or turned off with 0, and reject nonsense", () => {
+  assert.deepEqual(loadConfig(base).limits, { ...DEFAULT_LIMITS, trustProxy: false });
+  const c = loadConfig({ ...base, TURNS_PER_HOUR: "5", TURNS_PER_DAY: "0", NEW_USERS_PER_IP_PER_HOUR: "3", TRUST_PROXY: "true" }).limits;
+  assert.deepEqual(c, { turnsPerHour: 5, turnsPerDay: 0, newUsersPerIpPerHour: 3, trustProxy: true });
+  for (const bad of ["-1", "2.5", "lots"]) {
+    assert.throws(() => loadConfig({ ...base, TURNS_PER_HOUR: bad }), /TURNS_PER_HOUR/, bad);
+  }
 });

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ConversationStore, isValidId, type Claim } from "../src/memory/store.ts";
 import { migrate, openDb } from "../src/db/db.ts";
+import { MIGRATIONS } from "../src/db/schema.ts";
 import { touchUser } from "../src/memory/users.ts";
 import { newUser, testDb } from "./db-helper.ts";
 
@@ -132,7 +133,7 @@ test("migrations are idempotent and users are recognised", async () => {
   const db = await openDb();
   await migrate(db); // running again changes nothing
   const { rows } = await db.query("SELECT version FROM schema_migrations");
-  assert.equal(rows.length, 1);
+  assert.equal(rows.length, MIGRATIONS.length);
   assert.equal(await touchUser(db, "no-such-user"), false);
   await db.close();
 });

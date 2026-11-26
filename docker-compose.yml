@@ -1,0 +1,37 @@
+# The app plus Postgres, as it runs when deployed.
+#   docker compose up --build        then open http://localhost:3000
+# Reads GEMINI_API_KEY (and any other settings) from .env.
+
+services:
+  db:
+    # Postgres 17 with the pgvector extension available, for embedding search later.
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: neko
+      POSTGRES_PASSWORD: neko
+      POSTGRES_DB: neko
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neko -d neko"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://neko:neko@db:5432/neko
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

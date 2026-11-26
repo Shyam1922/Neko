@@ -6,6 +6,7 @@ import { createApp, USER_COOKIE } from "../src/app.ts";
 import { ConversationStore } from "../src/memory/store.ts";
 import { ProfileStore } from "../src/memory/profile.ts";
 import { newUser, testDb } from "./db-helper.ts";
+import { NO_LIMITS, type Limits } from "../src/limits.ts";
 import type { Llm, LlmEvent, StreamRequest } from "../src/adapters/llm.ts";
 import type { Search } from "../src/adapters/search.ts";
 
@@ -26,13 +27,13 @@ const noSearch: Search = { search: async () => [] };
 
 // Starts the app with a fresh user. `fetch` (and `post`) send that user's cookie, like a browser would;
 // `anon` is plain fetch, for a visitor with no cookie.
-async function start(llm: Llm) {
+async function start(llm: Llm, limits?: Limits) {
   const db = await testDb();
   const user = await newUser();
   const now = () => new Date("2026-11-12T08:00:00Z");
   const store = new ConversationStore(db, user, now);
   const profile = new ProfileStore(db, user, now);
-  const server = createApp({ db, llm, search: noSearch, publicDir: path.resolve("public"), now });
+  const server = createApp({ db, llm, search: noSearch, publicDir: path.resolve("public"), now, limits });
   await new Promise<void>((r) => server.listen(0, r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const fetch = (url: string, init: RequestInit = {}) =>
@@ -182,5 +183,85 @@ test("rename and delete a conversation", async () => {
   assert.equal((await fetch(`${base}/api/conversations/${id}`)).status, 404);
   assert.equal((await fetch(`${base}/api/conversations/${id}`, { method: "DELETE" })).status, 404);
   assert.deepEqual(await (await fetch(`${base}/api/conversations`)).json(), []);
+  close();
+});
+
+// Captures console.log lines written while fn runs.
+async function captureLogs(fn: () => Promise<void>) {
+  const lines: string[] = [];
+  const orig = console.log;
+  console.log = (...a: unknown[]) => void lines.push(a.join(" "));
+  try {
+    await fn();
+  } finally {
+    console.log = orig;
+  }
+  return lines.flatMap((l) => {
+    try {
+      return [JSON.parse(l)];
+    } catch {
+      return [];
+    }
+  });
+}
+
+test("each turn writes one JSON log line with latency, model calls and searches, and never the raw user id", async () => {
+  const { base, user, close, post } = await start(new FakeLlm());
+  const logs = await captureLogs(async () => void (await (await post(base, { text: "hi" })).text()));
+  const turn = logs.find((l) => l.event === "turn");
+  assert.ok(turn);
+  assert.equal(turn.outcome, "ok");
+  assert.equal(turn.route, "chat");
+  assert.equal(turn.modelCalls, 2); // router + answer
+  assert.equal(turn.searches, 0);
+  assert.equal(typeof turn.ms, "number");
+  assert.equal(turn.outChars, "Hello there.".length);
+  assert.ok(!JSON.stringify(logs).includes(user)); // the user id is the login cookie: only a hash is logged
+  close();
+});
+
+test("a failed turn is logged as an error", async () => {
+  const { base, close, post } = await start(new FakeLlm([], new Error("boom")));
+  const logs = await captureLogs(async () => void (await (await post(base, { text: "hi" })).text()));
+  const turn = logs.find((l) => l.event === "turn");
+  assert.equal(turn.outcome, "error");
+  assert.match(turn.error, /boom/);
+  close();
+});
+
+test("over the hourly limit, chat answers 429 with a readable reason and saves nothing", async () => {
+  const { base, store, close, post } = await start(new FakeLlm(), { ...NO_LIMITS, turnsPerHour: 2 });
+  for (let i = 0; i < 2; i++) {
+    const ok = await post(base, { text: `q${i}` });
+    assert.equal(ok.status, 200);
+    await ok.text(); // let the turn finish
+  }
+  const res = await post(base, { text: "one more" });
+  assert.equal(res.status, 429);
+  assert.match((await res.json()).error, /limit/);
+  const all = await store.getAll();
+  assert.ok(all.every((c) => c.messages.every((m) => m.text !== "one more")));
+  close();
+});
+
+test("too many new users from one IP are refused", async () => {
+  const { base, close } = await start(new FakeLlm(), { ...NO_LIMITS, newUsersPerIpPerHour: 2 });
+  const anon = () => globalThis.fetch(`${base}/api/chat`, { method: "POST", body: JSON.stringify({ text: "hi" }) });
+  for (let i = 0; i < 2; i++) {
+    const ok = await anon();
+    assert.equal(ok.status, 200);
+    await ok.text();
+  }
+  const res = await anon();
+  assert.equal(res.status, 429);
+  assert.match((await res.json()).error, /new visitors/);
+  close();
+});
+
+test("healthz reports the database is reachable", async () => {
+  const { base, db, close } = await start(new FakeLlm());
+  const res = await globalThis.fetch(`${base}/healthz`);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true, db: db.kind });
   close();
 });

@@ -56,4 +56,9 @@ export const MIGRATIONS: string[] = [
     UNIQUE (user_id, key)                      -- one fact per key: a newer statement replaces the older one
   );
   `,
+  // 2: the rate limits count recent user messages, per user and across everyone.
+  `
+  CREATE INDEX messages_user_turns ON messages (user_id, at) WHERE role = 'user';
+  CREATE INDEX messages_turns ON messages (at) WHERE role = 'user';
+  `,
 ];

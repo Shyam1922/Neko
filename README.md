@@ -72,6 +72,10 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | `PARALLEL_API_KEY` | no | | Higher limits on the hosted search server; works without it |
 | `SEARCH_MCP_URL` | no | `https://search.parallel.ai/mcp` | Search server (MCP over HTTP) |
 | `PORT` | no | `3000` | |
+| `TURNS_PER_HOUR` | no | `30` | Messages one user may send per hour. `0` turns the limit off |
+| `TURNS_PER_DAY` | no | `500` | Messages everyone together may send per 24 hours, to stay inside the key's daily quota. `0` = off |
+| `NEW_USERS_PER_IP_PER_HOUR` | no | `10` | New anonymous accounts per IP address per hour, so clearing cookies doesn't reset the hourly limit. `0` = off |
+| `TRUST_PROXY` | no | `false` | Set `true` behind a hosting proxy (Render, Railway, Fly) so the visitor's IP is read from `X-Forwarded-For` |
 | `DATABASE_URL` | no | | A Postgres server, e.g. `postgres://user:pass@host:5432/neko`. Unset: an embedded Postgres in `DATA_DIR` |
 | `DATA_DIR` | no | `data` | Where the embedded database lives (`data/pglite`) when `DATABASE_URL` is unset |
 
@@ -81,6 +85,7 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | --- | --- |
 | `npm run dev` | Start the server with auto-reload |
 | `npm test` | Unit tests (no network, key or database server needed; set `TEST_DATABASE_URL` to run them against a real Postgres) |
+| `npm run stats` | Usage from the database: people who sent a message, returning people, answers, median and p90 answer time, per day. Set `DATABASE_URL` for a deployed database |
 | `npm run import:json` | Copies chats and profile facts saved by older versions (`data/*.json`) into the database. Stop the server first |
 | `npm run typecheck` | TypeScript check |
 | `npm run ping:model` | One tiny model call with timings; tells key/network problems apart from app problems |
@@ -98,6 +103,16 @@ Everything is stored in **Postgres**: `users`, `conversations`, `messages` and `
 There is no sign-up. The first message you send creates an anonymous account and stores its random id in an HttpOnly cookie. Every query filters on that id, so people sharing one server never see each other's chats or profile. Clearing your cookies starts a fresh, empty account.
 
 In the sidebar, hover a chat to **rename** or **delete** it. Deleting a chat removes its messages; facts it taught Neko stay in your profile until you remove them there.
+
+## Deploy
+
+**Docker, locally.** `docker compose up --build` runs Neko with a Postgres server (with pgvector) on <http://localhost:3000>. It reads your key from `.env`.
+
+**Render (free).** The repo includes a blueprint, [render.yaml](render.yaml). In Render, choose **New → Blueprint**, pick this repository and paste your Gemini key when asked. Render builds the Dockerfile, creates a Postgres database and wires `DATABASE_URL`, and checks `/healthz`. Free web services sleep when idle, so the first visit after a quiet spell takes about a minute. A free Render database expires after 30 days; for a longer-lived demo, point `DATABASE_URL` at a free [Neon](https://neon.tech) database instead (add `?sslmode=require`).
+
+**Protecting the key.** A public demo spends your Gemini quota, so the limits in the table above are on by default. Someone over a limit gets a plain message saying how long to wait, not an error. Request bodies are capped at 100 KB and messages at 8,000 characters.
+
+**Logs.** Every turn writes one JSON line: route, total and first-token latency, model calls, searches, search errors, and the outcome (`ok`, `error`, `aborted`). Users appear as a short hash, never the cookie id. `npm run stats` turns the database into usage numbers.
 
 ## How it works
 
@@ -125,6 +140,8 @@ src/
   server.ts            entry point: config, wiring, listen
   app.ts               HTTP server: /api/chat (streamed), /api/conversations, /api/profile, the user cookie, static files
   config.ts            env loading with clear errors
+  limits.ts            per-user, daily and per-IP limits that protect the model key
+  log.ts               one JSON line per event; users appear only as a hash
   db/
     db.ts              one interface over Postgres (DATABASE_URL) and embedded PGlite; migrations
     schema.ts          the tables, as append-only migrations
@@ -147,7 +164,8 @@ src/
     recall.ts          find the conversation you mean
     profile.ts         the facts you told Neko about yourself (viewable, editable)
 public/                the chat page: landing, answer cards, verdict badges, history (no build step; light and dark themes)
-scripts/               ping-model, check-models, probe-search, import-json
+scripts/               ping-model, check-models, probe-search, import-json, stats
+Dockerfile, docker-compose.yml, render.yaml    container, local stack, Render blueprint
 test/                  unit tests with fake models and a fake search
 ```
 
