@@ -6,17 +6,41 @@ import type { Llm } from "./adapters/llm.ts";
 import type { Search } from "./adapters/search.ts";
 import { runAgent } from "./agent/pipeline.ts";
 import { cleanValue } from "./agent/personalize.ts";
-import type { ProfileStore } from "./memory/profile.ts";
-import { isValidId, type JsonStore, type RecallMeta, type SearchLog } from "./memory/store.ts";
+import type { Db } from "./db/db.ts";
+import { ProfileStore } from "./memory/profile.ts";
+import { ConversationStore, isValidId, MAX_TITLE, type RecallMeta, type SearchLog } from "./memory/store.ts";
+import { createUser, touchUser } from "./memory/users.ts";
 import { safeTimeZone } from "./memory/dates.ts";
 
 export interface AppDeps {
-  store: JsonStore;
+  db: Db;
   llm: Llm;
   search: Search;
-  profile: ProfileStore;
   publicDir: string;
   now?: () => Date;
+}
+
+// Each visitor is an anonymous user identified by a random id in this cookie. HttpOnly, so page scripts
+// cannot read it; the id is 122 random bits, so it cannot be guessed.
+export const USER_COOKIE = "neko_uid";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // a year, in seconds
+
+function cookieUserId(req: http.IncomingMessage): string | undefined {
+  for (const part of (req.headers.cookie ?? "").split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === USER_COOKIE) {
+      const id = decodeURIComponent(v.join("="));
+      return isValidId(id) ? id : undefined;
+    }
+  }
+}
+
+function setUserCookie(req: http.IncomingMessage, res: http.ServerResponse, id: string) {
+  const https = req.headers["x-forwarded-proto"] === "https" || (req.socket as any).encrypted;
+  res.setHeader(
+    "Set-Cookie",
+    `${USER_COOKIE}=${id}; Path=/; Max-Age=${COOKIE_MAX_AGE}; HttpOnly; SameSite=Lax${https ? "; Secure" : ""}`,
+  );
 }
 
 const MAX_BODY = 100_000;
@@ -44,7 +68,22 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export function createApp({ store, llm, search, profile, publicDir, now = () => new Date() }: AppDeps): http.Server {
+export function createApp({ db, llm, search, publicDir, now = () => new Date() }: AppDeps): http.Server {
+  // The user behind this request, or null for a visitor who has never sent a message. Only `create`
+  // (sending a message) makes a new user, so page loads and bots do not fill the users table.
+  async function currentUser(req: http.IncomingMessage, res: http.ServerResponse, create: boolean): Promise<string | null> {
+    const id = cookieUserId(req);
+    if (id && (await touchUser(db, id))) return id;
+    if (!create) return null;
+    const fresh = await createUser(db); // unknown or missing cookie: never adopt a client-chosen id
+    setUserCookie(req, res, fresh);
+    return fresh;
+  }
+  const storesFor = (userId: string) => ({
+    store: new ConversationStore(db, userId, now),
+    profile: new ProfileStore(db, userId, now),
+  });
+
   async function chat(req: http.IncomingMessage, res: http.ServerResponse) {
     let input: { conversationId?: unknown; text?: unknown; tz?: unknown };
     try {
@@ -60,6 +99,7 @@ export function createApp({ store, llm, search, profile, publicDir, now = () => 
     }
 
     const tz = safeTimeZone(input.tz);
+    const { store, profile } = storesFor((await currentUser(req, res, true))!);
     let saved;
     try {
       saved = await store.append(input.conversationId as string | undefined, { role: "user", text, tz });
@@ -139,20 +179,45 @@ export function createApp({ store, llm, search, profile, publicDir, now = () => 
       const url = new URL(req.url ?? "/", "http://localhost");
       const { pathname } = url;
       if (req.method === "POST" && pathname === "/api/chat") return await chat(req, res);
-      if (req.method === "GET" && pathname === "/api/conversations") return sendJson(res, 200, await store.list());
-      const m = pathname.match(/^\/api\/conversations\/([^/]+)$/);
-      if (req.method === "GET" && m) {
-        const conv = await store.get(m[1]);
-        return conv ? sendJson(res, 200, conv) : sendJson(res, 404, { error: "Conversation not found" });
+      if (!pathname.startsWith("/api/")) {
+        return req.method === "GET" ? await serveStatic(pathname, res) : sendJson(res, 405, { error: "Method not allowed" });
       }
+
+      // Everything below belongs to one user. A visitor with no user yet simply has nothing.
+      const userId = await currentUser(req, res, false);
+      const { store, profile } = userId ? storesFor(userId) : { store: null, profile: null };
+      const notFound = (what = "Not found") => sendJson(res, 404, { error: what });
+
+      if (req.method === "GET" && pathname === "/api/conversations") return sendJson(res, 200, store ? await store.list() : []);
+      const m = pathname.match(/^\/api\/conversations\/([^/]+)$/);
+      if (m && req.method === "GET") {
+        const conv = await store?.get(m[1]);
+        return conv ? sendJson(res, 200, conv) : notFound("Conversation not found");
+      }
+      if (m && req.method === "PATCH") {
+        let title = "";
+        try {
+          const t = JSON.parse(await readBody(req)).title;
+          if (typeof t === "string") title = t.replace(/\s+/g, " ").trim();
+        } catch {
+          /* handled below */
+        }
+        if (!title || title.length > MAX_TITLE) return sendJson(res, 400, { error: `title must be 1-${MAX_TITLE} characters.` });
+        return (await store?.rename(m[1], title)) ? sendJson(res, 200, { ok: true, title }) : notFound("Conversation not found");
+      }
+      if (m && req.method === "DELETE") {
+        return (await store?.remove(m[1])) ? sendJson(res, 200, { ok: true }) : notFound("Conversation not found");
+      }
+
       // What Neko knows about the user: visible, editable, deletable.
       if (pathname === "/api/profile") {
-        if (req.method === "GET") return sendJson(res, 200, await profile.list());
-        if (req.method === "DELETE") return await profile.clear(), sendJson(res, 200, { ok: true });
+        if (req.method === "GET") return sendJson(res, 200, profile ? await profile.list() : []);
+        if (req.method === "DELETE") return await profile?.clear(), sendJson(res, 200, { ok: true });
       }
       const pf = pathname.match(/^\/api\/profile\/([^/]+)$/);
+      if (pf && !profile) return notFound();
       if (pf && req.method === "DELETE") {
-        return (await profile.remove(pf[1])) ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: "Not found" });
+        return (await profile!.remove(pf[1])) ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: "Not found" });
       }
       if (pf && req.method === "PUT") {
         let value: string | null = null;
@@ -162,11 +227,10 @@ export function createApp({ store, llm, search, profile, publicDir, now = () => 
           /* handled below */
         }
         if (!value) return sendJson(res, 400, { error: "value must be 1-120 characters and must not look like a secret or an ID number." });
-        const fact = await profile.update(pf[1], value);
-        return fact ? sendJson(res, 200, fact) : sendJson(res, 404, { error: "Not found" });
+        const fact = await profile!.update(pf[1], value);
+        return fact ? sendJson(res, 200, fact) : notFound();
       }
-      if (req.method === "GET") return await serveStatic(pathname, res);
-      sendJson(res, 405, { error: "Method not allowed" });
+      sendJson(res, req.method === "GET" ? 404 : 405, { error: req.method === "GET" ? "Not found" : "Method not allowed" });
     } catch (err: any) {
       console.error(err);
       if (!res.headersSent) sendJson(res, 500, { error: "Internal error" });

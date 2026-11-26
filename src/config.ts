@@ -4,7 +4,8 @@ export interface Config {
   geminiApiKey: string;
   model: string;
   port: number;
-  dataDir: string;
+  dataDir: string; // embedded Postgres (PGlite) lives in <dataDir>/pglite when databaseUrl is not set
+  databaseUrl?: string; // a real Postgres server: postgres://user:pass@host:5432/db
   modelTimeoutMs: number; // how long to wait for the model to answer before showing an error
 }
 
@@ -39,6 +40,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     model: env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
     port,
     dataDir: env.DATA_DIR?.trim() || "data",
+    databaseUrl: env.DATABASE_URL?.trim() || undefined,
     modelTimeoutMs: Math.round(seconds * 1000),
   };
 }

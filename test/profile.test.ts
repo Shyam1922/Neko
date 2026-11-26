@@ -1,39 +1,55 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readdir } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { MAX_FACTS, ProfileStore } from "../src/memory/profile.ts";
-import { JsonStore } from "../src/memory/store.ts";
+import { ConversationStore } from "../src/memory/store.ts";
 import { acceptCandidates, cleanValue, labelOf, profileBlock } from "../src/agent/personalize.ts";
 import { validateDecision } from "../src/agent/router.ts";
+import { newUser, testDb } from "./db-helper.ts";
 
-const tmp = () => mkdtemp(path.join(os.tmpdir(), "recall-prof-"));
-const src = { conversationId: "c1", messageId: "m1" };
+// A fresh user with one real message to point facts at (facts reference the message they came from).
+async function setup() {
+  const db = await testDb();
+  const user = await newUser();
+  const chats = new ConversationStore(db, user);
+  const { conversation, message } = await chats.append(undefined, { role: "user", text: "about me" });
+  return { db, user, chats, store: new ProfileStore(db, user), src: { conversationId: conversation.id, messageId: message.id } };
+}
 const fact = (key: string, value = "v") => ({ key, value, quote: "q" });
 
 test("upsert adds, then replaces by key (same id, new value), and persists", async () => {
-  const dir = await tmp();
-  const store = new ProfileStore(dir);
+  const { db, user, chats, store, src } = await setup();
   const a = await store.upsert({ key: "team_size", value: "20 people", quote: "a 20-person team" }, src);
   assert.equal(a?.previous, undefined);
-  const b = await store.upsert({ key: "team_size", value: "25 people", quote: "now 25 of us" }, { conversationId: "c2", messageId: "m9" });
+  const later = await chats.append(src.conversationId, { role: "user", text: "now 25 of us" });
+  const b = await store.upsert({ key: "team_size", value: "25 people", quote: "now 25 of us" }, { conversationId: src.conversationId, messageId: later.message.id });
   assert.equal(b?.previous, "20 people");
   assert.equal(b?.fact.id, a?.fact.id);
   assert.equal(b?.fact.statedAt, a?.fact.statedAt); // first stated time kept
-  const again = await new ProfileStore(dir).list(); // a fresh instance reads it from disk
-  assert.deepEqual(again.map((f) => [f.key, f.value, f.conversationId]), [["team_size", "25 people", "c2"]]);
+  const again = await new ProfileStore(db, user).list(); // a fresh instance reads it from the database
+  assert.deepEqual(again.map((f) => [f.key, f.value, f.messageId]), [["team_size", "25 people", later.message.id]]);
 });
 
-test("the profile lives in a subfolder, so the conversation store never mistakes it for a chat", async () => {
-  const dir = await tmp();
-  await new ProfileStore(dir).upsert(fact("name", "Alex"), src);
-  assert.equal((await new JsonStore(dir).list()).length, 0);
-  assert.ok((await readdir(dir)).includes("profile"));
+test("facts are per user: another user cannot see, edit or delete them", async () => {
+  const { db, store, src } = await setup();
+  const { fact: f } = (await store.upsert(fact("name", "Alex"), src))!;
+  const other = new ProfileStore(db, await newUser());
+  assert.deepEqual(await other.list(), []);
+  assert.equal(await other.update(f.id, "Mallory"), null);
+  assert.equal(await other.remove(f.id), false);
+  await other.clear();
+  assert.equal((await store.list())[0].value, "Alex");
+});
+
+test("deleting the chat a fact came from keeps the fact but drops the link", async () => {
+  const { chats, store, src } = await setup();
+  await store.upsert(fact("name", "Alex"), src);
+  assert.equal(await chats.remove(src.conversationId), true);
+  const [f] = await store.list();
+  assert.deepEqual([f.value, f.conversationId, f.messageId], ["Alex", null, null]);
 });
 
 test("edit, remove and clear; the profile is capped", async () => {
-  const store = new ProfileStore(await tmp());
+  const { store, src } = await setup();
   const { fact: f } = (await store.upsert(fact("name", "Shy"), src))!;
   assert.equal((await store.update(f.id, "Alex"))?.value, "Alex");
   assert.equal(await store.update("nope", "x"), null);
@@ -44,6 +60,12 @@ test("edit, remove and clear; the profile is capped", async () => {
   assert.ok(await store.upsert(fact("key_3", "changed"), src)); // existing keys can still be updated
   await store.clear();
   assert.deepEqual(await store.list(), []);
+});
+
+test("concurrent upserts cannot overfill the profile", async () => {
+  const { store, src } = await setup();
+  await Promise.all(Array.from({ length: MAX_FACTS + 10 }, (_, i) => store.upsert(fact(`k_${i}`), src)));
+  assert.equal((await store.list()).length, MAX_FACTS);
 });
 
 test("cleanValue rejects secrets, emails, long numbers, and over-long or empty values", () => {

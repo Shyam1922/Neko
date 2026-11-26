@@ -1,10 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { runAgent, type AgentEvent } from "../src/agent/pipeline.ts";
-import { JsonStore, type Conversation } from "../src/memory/store.ts";
+import { ConversationStore, type Conversation } from "../src/memory/store.ts";
+import { newUser, testDb } from "./db-helper.ts";
 import { ProfileStore } from "../src/memory/profile.ts";
 import type { JsonRequest, Llm, LlmEvent, StreamRequest } from "../src/adapters/llm.ts";
 import type { Search, SearchHit } from "../src/adapters/search.ts";
@@ -45,18 +43,19 @@ class FakeSearch implements Search {
   }
 }
 
-const profiles = new WeakMap<JsonStore, ProfileStore>();
+const profiles = new WeakMap<ConversationStore, ProfileStore>();
 async function setup() {
   let clock = NOW;
-  const dir = await mkdtemp(path.join(os.tmpdir(), "recall-pipe-"));
-  const store = new JsonStore(dir, () => clock);
-  profiles.set(store, new ProfileStore(dir, () => clock));
+  const db = await testDb();
+  const user = await newUser();
+  const store = new ConversationStore(db, user, () => clock);
+  profiles.set(store, new ProfileStore(db, user, () => clock));
   const at = (iso: string) => void (clock = new Date(iso));
   return { store, at };
 }
 
 // 3 Nov: the user asked about Neon; the assistant searched and answered with a price.
-async function seedNeon(store: JsonStore, at: (iso: string) => void) {
+async function seedNeon(store: ConversationStore, at: (iso: string) => void) {
   at("2026-11-03T06:00:00Z");
   const u = await store.append(undefined, { role: "user", text: "Postgres hosting: what does Neon cost?", tz: TZ });
   at("2026-11-03T06:01:00Z");
@@ -70,7 +69,7 @@ async function seedNeon(store: JsonStore, at: (iso: string) => void) {
 
 const textOf = (events: AgentEvent[]) => events.flatMap((e) => (e.type === "token" ? [e.text] : [])).join("");
 
-async function ask(llm: FakeAgentLlm, search: Search, store: JsonStore, at: (iso: string) => void, text: string, convId?: string) {
+async function ask(llm: FakeAgentLlm, search: Search, store: ConversationStore, at: (iso: string) => void, text: string, convId?: string) {
   at(NOW.toISOString());
   const saved = await store.append(convId, { role: "user", text, tz: TZ });
   const events: AgentEvent[] = [];

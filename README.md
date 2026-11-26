@@ -42,11 +42,11 @@ Neko remembers what you tell it about yourself and uses it to tailor answers:
 - **Facts you state** ("I'm Alex", "I'm a freelance designer", "my budget is 500 a month", "I'm based in Lisbon", "I prefer short answers") are saved automatically and used in every later chat, so you never repeat them. It also greets you by name.
 - **Local context.** A saved currency or region steers how prices are shown. Neko never converts currencies from memory: if a source only gives another currency, it shows that and says so.
 - **Tone and format.** A stated preference for short answers, bullets or detail is followed.
-- **You stay in control.** Under each reply Neko says what it just remembered, with **Undo**. The **profile button** (top-right: your name and initial, or an icon until it knows your name) opens **Your profile**. It lists every saved fact, so you can check what it learned, correct a value, delete one, or forget everything. The same panel has the **Appearance** switch: Light, Dark, or System (follow your device). The theme choice is kept in your browser. Everything else stays on your machine: nothing leaves it except the model and search calls.
+- **You stay in control.** Under each reply Neko says what it just remembered, with **Undo**. The **profile button** (top-right: your name and initial, or an icon until it knows your name) opens **Your profile**. It lists every saved fact, so you can check what it learned, correct a value, delete one, or forget everything. The same panel has the **Appearance** switch: Light, Dark, or System (follow your device). The theme choice is kept in your browser. Everything else is kept in Neko's database, under your own anonymous account (see [Storage and accounts](#storage-and-accounts)); nothing else leaves it except the model and search calls.
 
 ![Your profile panel: the theme switch (Light, Dark, System) and what Neko remembers about you](docs/screenshots/profile.jpg)
 
-How it stays trustworthy: nothing is inferred. The router that already reads each message proposes facts you stated, and code keeps one only if it is a **verbatim quote** from your message, is short, and does not look like a secret, an email or an ID number (passwords, API keys, card or phone numbers and health details are never stored). That costs **no extra model call**. Facts live in `data/profile/facts.json` on your machine (git-ignored); a newer statement replaces an older one for the same key.
+How it stays trustworthy: nothing is inferred. The router that already reads each message proposes facts you stated, and code keeps one only if it is a **verbatim quote** from your message, is short, and does not look like a secret, an email or an ID number (passwords, API keys, card or phone numbers and health details are never stored). That costs **no extra model call**. Facts live in the `profile_facts` table, one row per fact, with the message it came from; a newer statement replaces an older one for the same key.
 
 ## Run it
 
@@ -72,14 +72,16 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | `PARALLEL_API_KEY` | no | | Higher limits on the hosted search server; works without it |
 | `SEARCH_MCP_URL` | no | `https://search.parallel.ai/mcp` | Search server (MCP over HTTP) |
 | `PORT` | no | `3000` | |
-| `DATA_DIR` | no | `data` | Where conversations are stored as JSON |
+| `DATABASE_URL` | no | | A Postgres server, e.g. `postgres://user:pass@host:5432/neko`. Unset: an embedded Postgres in `DATA_DIR` |
+| `DATA_DIR` | no | `data` | Where the embedded database lives (`data/pglite`) when `DATABASE_URL` is unset |
 
 ### Commands
 
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Start the server with auto-reload |
-| `npm test` | Unit tests (no network or key needed) |
+| `npm test` | Unit tests (no network, key or database server needed; set `TEST_DATABASE_URL` to run them against a real Postgres) |
+| `npm run import:json` | Copies chats and profile facts saved by older versions (`data/*.json`) into the database. Stop the server first |
 | `npm run typecheck` | TypeScript check |
 | `npm run ping:model` | One tiny model call with timings; tells key/network problems apart from app problems |
 | `npm run check:models` | Lists the models your key can call |
@@ -88,6 +90,14 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 **Using a paid key or a stronger model.** The default, `gemini-3.5-flash-lite`, is the fastest option and works on free keys. A stronger model can give fuller answers but is slower: in one test on a free key, `gemini-3.5-flash` took 57 seconds for a search question against 6.8 seconds for the default, and `gemini-3.8-flash` gave no answer within 150 seconds. These were single runs. A paid key has higher limits and may be quicker, which I haven't been able to test. To switch, set `GEMINI_MODEL` and raise `MODEL_TIMEOUT_SECONDS` (see `npm run check:models` for what your key can use).
 
 **Troubleshooting.** If the configured model isn't available for your key, Neko switches to the newest flash-lite model your key can use and logs the switch; to choose one yourself, pick from `npm run check:models` and set `GEMINI_MODEL`. Free-tier rate limits and Google's occasional "high demand" errors are retried automatically and otherwise shown with Google's own reason.
+
+### Storage and accounts
+
+Everything is stored in **Postgres**: `users`, `conversations`, `messages` and `profile_facts` (schema in [src/db/schema.ts](src/db/schema.ts)). With `DATABASE_URL` set, Neko uses that server. Without it, Neko runs an embedded Postgres ([PGlite](https://pglite.dev), Postgres compiled to WebAssembly) in `data/pglite`, so local use still needs no setup. Both run the same SQL.
+
+There is no sign-up. The first message you send creates an anonymous account and stores its random id in an HttpOnly cookie. Every query filters on that id, so people sharing one server never see each other's chats or profile. Clearing your cookies starts a fresh, empty account.
+
+In the sidebar, hover a chat to **rename** or **delete** it. Deleting a chat removes its messages; facts it taught Neko stay in your profile until you remove them there.
 
 ## How it works
 
@@ -113,8 +123,11 @@ A casual chat costs 2 model calls; a then-versus-now check costs 3 (4 the first 
 ```
 src/
   server.ts            entry point: config, wiring, listen
-  app.ts               HTTP server: /api/chat (streamed), /api/conversations, static files
+  app.ts               HTTP server: /api/chat (streamed), /api/conversations, /api/profile, the user cookie, static files
   config.ts            env loading with clear errors
+  db/
+    db.ts              one interface over Postgres (DATABASE_URL) and embedded PGlite; migrations
+    schema.ts          the tables, as append-only migrations
   adapters/
     llm.ts             Gemini: streaming, tool calls, JSON output, retries and timeouts
     search.ts          Parallel Search over MCP, plus a result cache
@@ -128,15 +141,16 @@ src/
     research.ts        bounded search loop (2 searches per turn)
     prompt.ts          system prompt
   memory/
-    store.ts           one JSON file per conversation
+    store.ts           one user's conversations and messages, in SQL
+    users.ts           anonymous users
     dates.ts           "last Tuesday" -> ranked candidate days (injectable clock)
     recall.ts          find the conversation you mean
     profile.ts         the facts you told Neko about yourself (viewable, editable)
 public/                the chat page: landing, answer cards, verdict badges, history (no build step; light and dark themes)
-scripts/               ping-model, check-models, probe-search
+scripts/               ping-model, check-models, probe-search, import-json
 test/                  unit tests with fake models and a fake search
 ```
 
 ## Limits
 
-Real runs cover a handful of conversations, not an evaluation set. Search turns take roughly 11 to 22 seconds on the free tier. A chat is titled by its first message, and the sidebar has no delete or rename yet. See the *Known limits* section of [DESIGN.md](DESIGN.md) for the full list.
+Real runs cover a handful of conversations, not an evaluation set. Search turns take roughly 11 to 22 seconds on the free tier. A chat is titled by its first message until you rename it. Accounts are anonymous and tied to one browser. See the *Known limits* section of [DESIGN.md](DESIGN.md) for the full list.

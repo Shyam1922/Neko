@@ -3,8 +3,7 @@ import { fileURLToPath } from "node:url";
 import { ConfigError, loadConfig, searchConfig } from "./config.ts";
 import { GeminiLlm } from "./adapters/llm.ts";
 import { CachedSearch, ParallelSearch } from "./adapters/search.ts";
-import { JsonStore } from "./memory/store.ts";
-import { ProfileStore } from "./memory/profile.ts";
+import { openDb } from "./db/db.ts";
 import { createApp } from "./app.ts";
 
 let config;
@@ -19,14 +18,22 @@ try {
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const dataDir = path.resolve(root, config.dataDir);
-const store = new JsonStore(dataDir);
-const profile = new ProfileStore(dataDir);
+const db = await openDb(
+  config.databaseUrl ? { databaseUrl: config.databaseUrl } : { dataDir: path.resolve(root, config.dataDir, "pglite") },
+);
 const llm = new GeminiLlm(config.geminiApiKey, config.model, config.modelTimeoutMs);
 const search = new CachedSearch(new ParallelSearch(searchConfig()));
-const app = createApp({ store, llm, search, profile, publicDir: path.join(root, "public") });
+const app = createApp({ db, llm, search, publicDir: path.join(root, "public") });
 
 app.listen(config.port, () => {
   // Last 4 characters only: enough to confirm which key the server loaded.
-  console.log(`Neko on http://localhost:${config.port}  model=${config.model}  key=...${config.geminiApiKey.slice(-4)}`);
+  console.log(`Neko on http://localhost:${config.port}  model=${config.model}  db=${db.kind}  key=...${config.geminiApiKey.slice(-4)}`);
 });
+
+// Platforms stop containers with SIGTERM: finish by closing the database cleanly (PGlite flushes to disk).
+for (const sig of ["SIGINT", "SIGTERM"] as const) {
+  process.once(sig, () => {
+    app.close();
+    db.close().finally(() => process.exit(0));
+  });
+}

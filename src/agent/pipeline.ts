@@ -10,7 +10,7 @@ import type { Search, SearchHit } from "../adapters/search.ts";
 import { dayOf, resolveTimePhrase } from "../memory/dates.ts";
 import { recall } from "../memory/recall.ts";
 import type { ProfileStore } from "../memory/profile.ts";
-import type { Conversation, JsonStore, RecallMeta, SearchLog } from "../memory/store.ts";
+import type { Conversation, ConversationStore, RecallMeta, SearchLog } from "../memory/store.ts";
 import { extractClaims } from "./claims.ts";
 import { compareClaim, noBaseline, resolveCurrent, type CurrentValue, type DiffItem } from "./compare.ts";
 import { acceptCandidates } from "./personalize.ts";
@@ -21,7 +21,7 @@ import { route, type Route, type RouteDecision } from "./router.ts";
 export interface AgentDeps {
   llm: Llm;
   search: Search;
-  store: JsonStore;
+  store: ConversationStore;
   profile: ProfileStore;
 }
 

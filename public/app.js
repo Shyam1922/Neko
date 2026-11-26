@@ -147,14 +147,76 @@ function renderHistory() {
       g.textContent = label;
       historyEl.appendChild(g);
     }
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "item" + (c.id === conversationId ? " active" : "");
-    item.title = c.title || "New chat";
-    item.textContent = c.title || "New chat"; // textContent: a title can never inject HTML
-    item.addEventListener("click", () => openConversation(c.id));
-    historyEl.appendChild(item);
+    historyEl.appendChild(historyRow(c));
   }
+}
+
+const ICON_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
+
+// One chat in the sidebar: open it, rename it in place, or delete it.
+function historyRow(c) {
+  const row = document.createElement("div");
+  row.className = "row" + (c.id === conversationId ? " active" : "");
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "item";
+  item.title = c.title || "New chat";
+  item.textContent = c.title || "New chat"; // textContent: a title can never inject HTML
+  item.addEventListener("click", () => openConversation(c.id));
+
+  const tool = (label, icon, onClick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "row-action";
+    b.title = label;
+    b.setAttribute("aria-label", `${label}: ${c.title || "New chat"}`);
+    b.innerHTML = icon; // a fixed icon, never user text
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return b;
+  };
+  row.append(item, tool("Rename", ICON_EDIT, () => startRename(row, c)), tool("Delete", ICON_TRASH, () => deleteConversation(c)));
+  return row;
+}
+
+function startRename(row, c) {
+  const field = document.createElement("input");
+  field.className = "rename";
+  field.value = c.title || "";
+  field.maxLength = 120;
+  field.setAttribute("aria-label", "Chat name");
+  row.replaceChildren(field);
+  field.focus();
+  field.select();
+  let finished = false;
+  const finish = async (save) => {
+    if (finished) return;
+    finished = true;
+    const title = field.value.replace(/\s+/g, " ").trim();
+    if (save && title && title !== c.title) {
+      const res = await fetch(`/api/conversations/${encodeURIComponent(c.id)}`, { method: "PATCH", body: JSON.stringify({ title }) }).catch(() => null);
+      if (res && res.ok) c.title = title;
+    }
+    renderHistory();
+  };
+  field.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") finish(true);
+    if (e.key === "Escape") finish(false);
+  });
+  field.addEventListener("blur", () => finish(true));
+}
+
+async function deleteConversation(c) {
+  if (send.disabled && c.id === conversationId) return; // a reply is still streaming into it
+  if (!confirm(`Delete "${c.title || "New chat"}"? This removes the chat and its messages for good. Facts it taught Neko about you stay in your profile.`)) return;
+  const res = await fetch(`/api/conversations/${encodeURIComponent(c.id)}`, { method: "DELETE" }).catch(() => null);
+  if (!res || !(res.ok || res.status === 404)) return;
+  conversations = conversations.filter((x) => x.id !== c.id);
+  if (c.id === conversationId) startNewChat();
+  else renderHistory();
 }
 
 async function loadHistory() {

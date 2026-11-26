@@ -12,17 +12,17 @@ One turn: **route → memory lookup → (claims → search → compare) → answ
 4. **No record is not a dead end.** Without a stored baseline Neko says so (that sentence is written by code, not the model), then searches what changed on the web after the date code resolved.
 5. **Answer** (1 model call, streamed) receives only verified findings and no search tool, so it can't add unverified ones.
 
-Facts the user states about themselves ride on the router call, are kept only as verbatim quotes, and sit in an editable profile panel, so personalisation costs no extra call. Everything is local: chats and profile live in `data/`. A casual chat costs 2 model calls; a then-versus-now check 3 (4 the first time).
+Facts the user states about themselves ride on the router call, are kept only as verbatim quotes, and sit in an editable profile panel, so personalisation costs no extra call. Chats and profile live in Postgres (embedded PGlite when no server is configured), one anonymous user per browser cookie, and every query filters by user. A casual chat costs 2 model calls; a then-versus-now check 3 (4 the first time).
 
 **Code is the librarian, the model is the reader.** The model has no memory, so anything that must be exact is code: dates, finding chats, quoting, search caps, provenance ("searched" vs "model knowledge", from our own log) and verdicts. The worst failure here is a fabricated baseline, so unverifiable output is dropped, never repaired.
 
 ## Considered and rejected
 
-Vector database (tiny corpus; a date filter plus keywords is explainable) · agent framework (the loop is about 100 lines, and a framework would hide what reviewers should read) · SQLite (one JSON file per chat is readable) · fine-tuning (can't give exact, source-linked recall) · always searching (slower, costs quota) · model-judged verdicts (can't be audited).
+Vector database (tiny corpus; a date filter plus keywords is explainable) · agent framework (the loop is about 100 lines, and a framework would hide what reviewers should read) · SQLite (Postgres instead: the same SQL runs embedded locally and on a hosted server, and pgvector is ready for embedding search) · fine-tuning (can't give exact, source-linked recall) · always searching (slower, costs quota) · model-judged verdicts (can't be audited).
 
 ## Known limits
 
-Checked on a handful of real conversations, not an evaluation set. Search turns take roughly 9 to 20 seconds on the free tier (routing adds 2 to 5), which is the weakest point against "answer fast". Wording-only differences end as "couldn't verify". Single-user.
+Checked on a handful of real conversations, not an evaluation set. Search turns take roughly 9 to 20 seconds on the free tier (routing adds 2 to 5), which is the weakest point against "answer fast". Wording-only differences end as "couldn't verify". Accounts are anonymous and tied to one browser.
 
 ## With another week
 
