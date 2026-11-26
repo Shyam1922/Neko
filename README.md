@@ -2,6 +2,8 @@
 
 A chat agent that **remembers your past conversations, checks the live web, and tells you what changed since** — and says so plainly when it can't compare, instead of guessing.
 
+**Try it live: <https://neko-qt6g.onrender.com>** (no sign-up; the first load can take a minute while the free server wakes up).
+
 Most chatbots can search the web, but they can't connect *"what you asked me last Tuesday"* to *"what's true today"*. Neko can:
 
 > **You:** Earlier today I asked you about Neon pricing. Has anything changed since then?
