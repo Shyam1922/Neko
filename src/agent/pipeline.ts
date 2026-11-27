@@ -8,6 +8,8 @@
 import type { Llm, Turn } from "../adapters/llm.ts";
 import type { Search, SearchHit } from "../adapters/search.ts";
 import { dayOf, resolveTimePhrase } from "../memory/dates.ts";
+import type { SemanticIndex } from "../memory/semantic.ts";
+import { withTimeout } from "../adapters/timeout.ts";
 import { recall } from "../memory/recall.ts";
 import type { ProfileStore } from "../memory/profile.ts";
 import type { Conversation, ConversationStore, RecallMeta, SearchLog } from "../memory/store.ts";
@@ -23,7 +25,10 @@ export interface AgentDeps {
   search: Search;
   store: ConversationStore;
   profile: ProfileStore;
+  semantic?: SemanticIndex; // without it, recall matches topics by keywords only
 }
+
+const SEMANTIC_TIMEOUT_MS = 8_000;
 
 export interface AgentInput {
   conv: Conversation; // already contains the user's new message as its last entry
@@ -38,6 +43,7 @@ export type AgentEvent =
   | TurnEvent
   | { type: "status"; text: string }
   | { type: "route"; route: string; ms: number } // which path the router chose and how long it took, for the turn log
+  | { type: "recall_mode"; mode: "hybrid" | "keywords"; reason?: string } // how topics were matched, for the turn log
   | { type: "recall"; meta: RecallMeta }
   | { type: "profile"; saved: SavedFact[] }; // facts about the user remembered from this message
 
@@ -221,7 +227,18 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
       const list = options.length ? options.map((c) => `- ${dayOf(c.startedAt, tz)}: "${c.title}"`).join("\n") : "(there are no other earlier conversations)";
       context = `The user has said twice that the conversation you recalled was the wrong one. Do not guess again. Ask which one they mean, listing exactly these real conversations and nothing else:\n${list}`;
     } else {
-      const result = recall({ phrase, topic, now: now(), tz, excluded }, pool);
+      // Meaning-based scores for the topic, when an index is available. Any failure (quota, timeout) falls back
+      // to keywords alone: a slower or dumber recall, never a broken turn.
+      let semantic: Map<string, number> | undefined;
+      if (topic && deps.semantic) {
+        try {
+          semantic = await withTimeout(deps.semantic.similar(store.userId, topic), SEMANTIC_TIMEOUT_MS, "the embedding model");
+          yield { type: "recall_mode", mode: "hybrid" };
+        } catch (err: any) {
+          yield { type: "recall_mode", mode: "keywords", reason: String(err?.message ?? err).slice(0, 200) };
+        }
+      }
+      const result = recall({ phrase, topic, now: now(), tz, excluded, semantic }, pool);
       if (result.kind === "several") {
         yield { type: "recall", meta: { ids: result.hits.map((h) => h.conversationId), phrase, topic, route: kind } };
         if (kind === "memory_research") {

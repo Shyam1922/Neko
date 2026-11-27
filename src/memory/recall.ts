@@ -4,6 +4,10 @@
 // Order of work: resolve the time phrase to candidate days -> keep conversations that
 // have a user message on those days -> score by topic -> pick a winner, report a tie,
 // or say plainly that there is no record. Nothing is ever invented.
+//
+// Topic scoring is hybrid: keyword overlap, or closeness in meaning from embeddings when the caller
+// supplies it (`semantic`), whichever is stronger. The date filter always comes first and is never
+// overridden by a vector: "Tuesday's chat about laptops" must be on Tuesday.
 
 import { dayOf, resolveTimePhrase, type DayCandidate } from "./dates.ts";
 import type { Conversation } from "./store.ts";
@@ -15,6 +19,7 @@ export interface RecallQuery {
   tz: string;
   excluded?: string[]; // conversation ids the user already rejected (correction ladder)
   onAmbiguousDays?: "ask" | "recent"; // two candidate days both match: ask, or take the newer
+  semantic?: Map<string, number>; // conversation id -> cosine similarity of its closest message to the topic
 }
 
 export interface Hit {
@@ -22,7 +27,8 @@ export interface Hit {
   title: string;
   day: string; // YYYY-MM-DD the conversation matched on
   label: string; // "Tue 3 Nov"
-  score: number; // topic overlap 0..1 (0 when no topic was given)
+  score: number; // topic match 0..1 (0 when no topic was given): the stronger of keywords and meaning
+  via?: "keywords" | "meaning"; // which signal gave the score, for the logs and the evals
   snippet?: string; // what the user said that matched the topic, so options can be told apart
 }
 
@@ -35,7 +41,14 @@ export type RecallResult =
 const STOPWORDS = new Set(
   "the and for with that this what when where which who how did does was were are you your yours about have has had any since from into over than then them they their can could would should will just tell told asked ask last next our out its not but all".split(" "),
 );
-const STRONG = 0.5; // share of topic words a conversation must contain to count as a match
+const STRONG = 0.5; // a conversation must score this much on the topic to count as a match
+
+// Cosine similarity from gemini-embedding-001 (768 dims, query vs document) is mapped onto the same 0..1
+// scale as keyword overlap. Measured on real chats: the same topic in other words scores 0.65-0.68,
+// unrelated topics 0.49-0.60. So 0.55 maps to 0, 0.70 to 1, and STRONG (0.5) falls at a cosine of 0.625.
+export const SEMANTIC_FLOOR = 0.55;
+export const SEMANTIC_FULL = 0.7;
+export const semanticScore = (cos: number) => Math.min(1, Math.max(0, (cos - SEMANTIC_FLOOR) / (SEMANTIC_FULL - SEMANTIC_FLOOR)));
 
 function tokens(text: string): Set<string> {
   const out = new Set<string>();
@@ -72,14 +85,18 @@ export function recall(query: RecallQuery, conversations: Conversation[]): Recal
   const topic = tokens(query.topic ?? "");
   const hasTopic = topic.size > 0;
 
-  const hit = (c: Conversation, day: string, label: string): Hit => ({
-    conversationId: c.id,
-    title: c.title,
-    day,
-    label,
-    score: topicScore(topic, c),
-    ...(hasTopic ? { snippet: snippetFor(topic, c) } : {}),
-  });
+  const hit = (c: Conversation, day: string, label: string): Hit => {
+    const words = topicScore(topic, c);
+    const meaning = hasTopic && query.semantic?.has(c.id) ? semanticScore(query.semantic.get(c.id)!) : 0;
+    return {
+      conversationId: c.id,
+      title: c.title,
+      day,
+      label,
+      score: Math.max(words, meaning),
+      ...(hasTopic ? { via: meaning > words ? ("meaning" as const) : ("keywords" as const), snippet: snippetFor(topic, c) } : {}),
+    };
+  };
 
   // Strong topic matches anywhere in time: used for "near match" suggestions and topic-only recall.
   const topicMatches = (skip: Set<string>): Hit[] =>

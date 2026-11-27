@@ -61,4 +61,19 @@ export const MIGRATIONS: string[] = [
   CREATE INDEX messages_user_turns ON messages (user_id, at) WHERE role = 'user';
   CREATE INDEX messages_turns ON messages (at) WHERE role = 'user';
   `,
+  // 3: embeddings for finding conversations by meaning (pgvector). A table of its own, so the vectors can be
+  // rebuilt with another model without touching messages. No approximate (HNSW) index: every search is
+  // filtered to one user's few hundred messages, where an exact scan is both fast and exact.
+  `
+  CREATE EXTENSION IF NOT EXISTS vector;
+  CREATE TABLE message_embeddings (
+    message_id      text PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+    conversation_id text NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id         text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    model           text NOT NULL,
+    embedding       vector(768) NOT NULL,
+    created_at      timestamptz NOT NULL DEFAULT now()
+  );
+  CREATE INDEX message_embeddings_user ON message_embeddings (user_id);
+  `,
 ];

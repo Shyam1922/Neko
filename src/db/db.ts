@@ -5,6 +5,7 @@
 
 import { mkdir } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { vector } from "@electric-sql/pglite-pgvector";
 import pg from "pg";
 import { MIGRATIONS } from "./schema.ts";
 
@@ -89,7 +90,7 @@ export async function openDb(opts: { databaseUrl?: string; dataDir?: string } = 
     db = new PostgresDb(new pg.Pool({ connectionString: opts.databaseUrl, ssl, max: 10 }));
   } else {
     if (opts.dataDir) await mkdir(opts.dataDir, { recursive: true });
-    db = new PgliteDb(await PGlite.create(opts.dataDir));
+    db = new PgliteDb(await PGlite.create(opts.dataDir, { extensions: { vector } })); // pgvector, as on the server
   }
   await migrate(db);
   return db;

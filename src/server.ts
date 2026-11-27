@@ -4,6 +4,8 @@ import { ConfigError, loadConfig, searchConfig } from "./config.ts";
 import { GeminiLlm } from "./adapters/llm.ts";
 import { CachedSearch, ParallelSearch } from "./adapters/search.ts";
 import { openDb } from "./db/db.ts";
+import { GeminiEmbedder } from "./adapters/embed.ts";
+import { SemanticIndex } from "./memory/semantic.ts";
 import { createApp } from "./app.ts";
 
 let config;
@@ -23,12 +25,15 @@ const db = await openDb(
 );
 const llm = new GeminiLlm(config.geminiApiKey, config.model, config.modelTimeoutMs);
 const search = new CachedSearch(new ParallelSearch(searchConfig()));
-const app = createApp({ db, llm, search, publicDir: path.join(root, "public"), limits: config.limits });
+const semantic = config.embedModel ? new SemanticIndex(db, new GeminiEmbedder(config.geminiApiKey, config.embedModel)) : undefined;
+const app = createApp({ db, llm, search, publicDir: path.join(root, "public"), limits: config.limits, semantic });
 
 app.listen(config.port, () => {
   // Last 4 characters only: enough to confirm which key the server loaded.
   const l = config.limits;
   console.log(`Neko on http://localhost:${config.port}  model=${config.model}  db=${db.kind}  key=...${config.geminiApiKey.slice(-4)}`);
+  console.log(`Recall: ${semantic ? `keywords + embeddings (${semantic.model})` : "keywords only (EMBED_MODEL=off)"}`);
+  void semantic?.kick(); // embed anything stored before embeddings existed, or missed while the model was down
   console.log(`Limits: ${l.turnsPerHour || "no"} turns/hour per user, ${l.turnsPerDay || "no"} turns/day in total, ${l.newUsersPerIpPerHour || "no"} new users/hour per IP${l.trustProxy ? " (client IP from X-Forwarded-For)" : ""}`);
 });
 

@@ -10,6 +10,7 @@ export interface Config {
   databaseUrl?: string; // a real Postgres server: postgres://user:pass@host:5432/db
   modelTimeoutMs: number; // how long to wait for the model to answer before showing an error
   limits: Limits;
+  embedModel: string | null; // null = embeddings off: recall by keywords only
 }
 
 // On by default, so a deploy that forgets to set them is still protected. 0 turns a limit off.
@@ -56,6 +57,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     dataDir: env.DATA_DIR?.trim() || "data",
     databaseUrl: env.DATABASE_URL?.trim() || undefined,
     modelTimeoutMs: Math.round(seconds * 1000),
+    embedModel: /^(off|none|0|false)$/i.test(env.EMBED_MODEL?.trim() ?? "") ? null : env.EMBED_MODEL?.trim() || "gemini-embedding-001",
     limits: {
       turnsPerHour: count(env, "TURNS_PER_HOUR", DEFAULT_LIMITS.turnsPerHour),
       turnsPerDay: count(env, "TURNS_PER_DAY", DEFAULT_LIMITS.turnsPerDay),

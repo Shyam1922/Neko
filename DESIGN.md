@@ -18,7 +18,7 @@ Facts the user states about themselves ride on the router call, are kept only as
 
 ## Considered and rejected
 
-Vector database (tiny corpus; a date filter plus keywords is explainable) · agent framework (the loop is about 100 lines, and a framework would hide what reviewers should read) · SQLite (Postgres instead: the same SQL runs embedded locally and on a hosted server, and pgvector is ready for embedding search) · fine-tuning (can't give exact, source-linked recall) · always searching (slower, costs quota) · model-judged verdicts (can't be audited).
+A separate vector database (pgvector inside the same Postgres keeps one store, one backup and per-user filtering in SQL; embeddings now only rank topic candidates after the date filter) · agent framework (the loop is about 100 lines, and a framework would hide what reviewers should read) · SQLite (Postgres instead: the same SQL runs embedded locally and on a hosted server, and pgvector is ready for embedding search) · fine-tuning (can't give exact, source-linked recall) · always searching (slower, costs quota) · model-judged verdicts (can't be audited).
 
 ## Known limits
 

@@ -2,6 +2,33 @@
 
 A running log of what was chosen, what else was on the table, and why. Newest first.
 
+## 2026-11-27 · Task 3: semantic search with embeddings
+
+**pgvector in the existing Postgres, not a vector database.**
+- Alternatives: Pinecone, Qdrant or Chroma as a second store.
+- Why: one database means one backup, one connection, and the per-user filter is a plain `WHERE user_id = $1` in the same query. Deleting a chat deletes its vectors through a foreign key, so there are no orphaned vectors to clean up. PGlite loads the same extension, so tests run on real pgvector SQL.
+
+**Exact search, no HNSW index (for now).**
+- Every search is restricted to one user's messages: a few hundred rows at most. An exact scan over that is fast and gives exact answers.
+- An approximate index pays off with a large shared corpus (Task 6's job listings), and that's where it belongs. Filtering an HNSW index by user can also silently return fewer results than asked for.
+
+**Hybrid scoring: `max(keywords, meaning)`, after the date filter.**
+- Order of work: resolve the date (code), keep chats active on those days, then score the topic. Embeddings never override the date: a close match on Monday is *offered* ("the closest is …"), never taken as Tuesday's chat.
+- Cosine similarity is mapped onto the keyword scale: 0.55 → 0, 0.70 → 1, so the existing "strong match" line (0.5) sits at a cosine of 0.625. The numbers come from real `gemini-embedding-001` output: the same topic in other words scored 0.65–0.68, unrelated topics 0.49–0.60.
+- Why `max` and not a weighted sum: each signal alone is good evidence. A keyword hit shouldn't be diluted by a low cosine, and a strong cosine (synonyms) shouldn't need a keyword. Each hit records which signal won (`via`), for the logs and evals.
+- Known weakness: a long chat covering many topics scores well on many queries, because a chat's score is its *closest message*. On real data it shows up as an extra third candidate in "did we ever talk about…" lists. To be measured and tuned with Task 4's eval set.
+
+**Retrieval task types.** Stored messages are embedded as `RETRIEVAL_DOCUMENT` and topics as `RETRIEVAL_QUERY`. On the probe set this separated related from unrelated chats noticeably better than embedding both the same way.
+
+**Embed in the background, never in the request path.**
+- After a reply is sent, `kick()` embeds every message without a vector (batches of 50, one run at a time per process). Startup runs it too, which backfills older data.
+- If the model fails (quota, outage), the error is logged and the next turn retries. A memory question that can't embed its topic within 8 seconds falls back to keywords; the turn log records `recallMode` as `hybrid` or `keywords`.
+- Cost: one embedding call per turn (both messages in one batch), plus one per memory question.
+
+**Model choice.** `gemini-embedding-001` at 768 dimensions (it supports smaller outputs than its default 3,072; 768 keeps rows small and is well within pgvector's limits). `gemini-embedding-2` was tried, but returned one vector for a whole batch through this SDK. The model is configurable with `EMBED_MODEL`, and each vector records the model that made it, so a later switch can re-embed.
+
+**Before/after on real data** (the 9 imported chats; topics phrased in other words): keywords alone found nothing for "East Africa", "precious metals" and "answer style preferences"; hybrid found the right chats for all three, and still found nothing for an unrelated topic ("cooking recipes"). Formal recall@1 numbers come with Task 4.
+
 ## 2026-11-26 · Task 2: deploy, limits, logging
 
 **Limits count rows that already exist.**

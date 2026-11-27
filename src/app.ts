@@ -13,6 +13,7 @@ import { createUser, touchUser } from "./memory/users.ts";
 import { safeTimeZone } from "./memory/dates.ts";
 import { clientIp, NO_LIMITS, SlidingWindow, turnLimitReason, type Limits } from "./limits.ts";
 import { logEvent, userTag } from "./log.ts";
+import type { SemanticIndex } from "./memory/semantic.ts";
 
 export interface AppDeps {
   db: Db;
@@ -21,6 +22,7 @@ export interface AppDeps {
   publicDir: string;
   now?: () => Date;
   limits?: Limits; // off unless given: local use and tests are unlimited
+  semantic?: SemanticIndex; // embeddings for recall; without it, keywords only
 }
 
 // Wraps the model so one turn can report how many calls it made.
@@ -81,7 +83,7 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export function createApp({ db, llm, search, publicDir, now = () => new Date(), limits = NO_LIMITS }: AppDeps): http.Server {
+export function createApp({ db, llm, search, publicDir, now = () => new Date(), limits = NO_LIMITS, semantic }: AppDeps): http.Server {
   const newUsersPerIp = new SlidingWindow(limits.newUsersPerIpPerHour, 3600_000);
 
   // The user behind this request, or null for a visitor who has never sent a message. Only `create`
@@ -155,6 +157,7 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
     let recall: RecallMeta | undefined;
     let routeName: string | undefined;
     let routeMs: number | undefined;
+    let recallMode: string | undefined;
     let firstTokenMs: number | undefined;
     const counted = countingLlm(llm);
     // One log line per turn, whatever happened: latency, model calls, searches, outcome.
@@ -166,6 +169,7 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
         outcome,
         ms: Date.now() - started,
         routeMs,
+        recallMode,
         firstTokenMs,
         modelCalls: counted.counter.calls,
         searches: searches.length,
@@ -175,10 +179,13 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
         ...extra,
       });
     try {
-      for await (const ev of runAgent({ llm: counted.llm, search, store, profile }, { conv, tz, now, signal: abort.signal })) {
+      for await (const ev of runAgent({ llm: counted.llm, search, store, profile, semantic }, { conv, tz, now, signal: abort.signal })) {
         if (ev.type === "route") {
           routeName = ev.route;
           routeMs = ev.ms;
+        } else if (ev.type === "recall_mode") {
+          recallMode = ev.mode;
+          if (ev.reason) logEvent("embed_error", { user: userTag(userId), error: ev.reason });
         } else if (ev.type === "token") {
           firstTokenMs ??= Date.now() - started;
           reply += ev.text;
@@ -200,6 +207,7 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
       const done = await store.append(conv.id, { role: "assistant", text: reply, tz, searches, recall, ms });
       turnLog("ok");
       send("done", { assistantMessage: done.message });
+      void semantic?.kick(); // embed this turn's two messages in the background, after the reply is out
     } catch (err: any) {
       if (abort.signal.aborted) {
         turnLog("aborted");

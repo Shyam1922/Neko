@@ -19,6 +19,7 @@ Most chatbots can search the web, but they can't connect *"what you asked me las
 | "What does Neon charge for Postgres hosting?" | Searches the web and answers with clickable source links. |
 | "Has any of that changed since I asked on Monday?" | Finds that earlier conversation, re-checks each fact, and reports **changed / unchanged / couldn't verify / no baseline**, with sources. If there is no record of that chat, it says so first, then searches what changed on the web since that date. |
 | "Did we ever talk about Uganda?" | Lists every earlier chat that mentions it, with times and your exact words. |
+| "Did we discuss East Africa?" | Finds the Uganda chat even though you never wrote "East Africa": topics are matched by meaning (embeddings) as well as by keywords. |
 | "No, that's not the one I meant" | Excludes that conversation and tries the next candidate; after a second miss it asks which one you mean. |
 | "I'm Alex, I'm based in Lisbon and I prefer short answers" | Remembers it, tailors this and every later answer to you, and greets you by name. See [Personalisation](#personalisation). |
 | "What is the capital of France?" | Answers directly. No search, no memory lookup. |
@@ -80,6 +81,7 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | `TRUST_PROXY` | no | `false` | Set `true` behind a hosting proxy (Render, Railway, Fly) so the visitor's IP is read from `X-Forwarded-For` |
 | `DATABASE_URL` | no | | A Postgres server, e.g. `postgres://user:pass@host:5432/neko`. Unset: an embedded Postgres in `DATA_DIR` |
 | `DATA_DIR` | no | `data` | Where the embedded database lives (`data/pglite`) when `DATABASE_URL` is unset |
+| `EMBED_MODEL` | no | `gemini-embedding-001` | Embedding model for finding chats by meaning; `off` = keywords only |
 
 ### Commands
 
@@ -133,6 +135,8 @@ flowchart LR
 
 The principle: **code is the librarian, the model is the reader.** The model has no memory, so anything that must be exact is done in code: date arithmetic, finding the right conversation, quoting you verbatim, search limits, provenance, and the verdicts. The model only classifies the message, reads old answers into claims, and writes the final reply. Every model output that gates behaviour is validated, and anything that fails verification is dropped, not repaired.
 
+**Hybrid recall.** Finding "that chat about laptops" runs in a fixed order. First code resolves the date ("last Tuesday" → the days it could mean) and keeps only chats with a message on those days. Then each chat gets a topic score: the stronger of keyword overlap and closeness in meaning. Meaning comes from [pgvector](https://github.com/pgvector/pgvector): every message is embedded in the background after its turn (768-dimension vectors from `gemini-embedding-001`), and a topic is compared against one user's messages by cosine similarity. Embeddings only *find* candidates. The date filter, the quotes and the verdicts stay exact, in code, and if the embedding model is unavailable recall falls back to keywords instead of failing.
+
 A casual chat costs 2 model calls; a then-versus-now check costs 3 (4 the first time). The full reasoning, the options rejected and the known limits are in **[DESIGN.md](DESIGN.md)**.
 
 ## Project layout
@@ -150,6 +154,7 @@ src/
   adapters/
     llm.ts             Gemini: streaming, tool calls, JSON output, retries and timeouts
     search.ts          Parallel Search over MCP, plus a result cache
+    embed.ts           Gemini embeddings (documents vs queries), in batches
     errors.ts          turns Google's raw errors into readable ones
   agent/
     pipeline.ts        one turn, end to end
@@ -163,7 +168,8 @@ src/
     store.ts           one user's conversations and messages, in SQL
     users.ts           anonymous users
     dates.ts           "last Tuesday" -> ranked candidate days (injectable clock)
-    recall.ts          find the conversation you mean
+    recall.ts          find the conversation you mean: dates first, then keywords + meaning
+    semantic.ts        embeds messages in the background; per-user similarity search (pgvector)
     profile.ts         the facts you told Neko about yourself (viewable, editable)
 public/                the chat page: landing, answer cards, verdict badges, history (no build step; light and dark themes)
 scripts/               ping-model, check-models, probe-search, import-json, stats
