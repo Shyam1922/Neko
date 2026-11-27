@@ -12,7 +12,7 @@ import type { SemanticIndex } from "../memory/semantic.ts";
 import { withTimeout } from "../adapters/timeout.ts";
 import { recall } from "../memory/recall.ts";
 import type { ProfileStore } from "../memory/profile.ts";
-import type { Conversation, ConversationStore, RecallMeta, SearchLog } from "../memory/store.ts";
+import type { Claim, Conversation, ConversationStore, RecallMeta, SearchLog } from "../memory/store.ts";
 import { extractClaims } from "./claims.ts";
 import { compareClaim, noBaseline, resolveCurrent, type CurrentValue, type DiffItem } from "./compare.ts";
 import { acceptCandidates } from "./personalize.ts";
@@ -107,6 +107,21 @@ const MEMORY_RULES = [
   "Quote the user's own words exactly as written there. If what they ask about is not in the record, say it is not in the record.",
 ].join("\n");
 
+/**
+ * Which earlier claims get re-checked, in code: only perishable ones (prices change, capitals don't), at most
+ * MAX_ENTITIES products and MAX_CLAIMS claims. A product the user named that has no stored claim is reported
+ * as NO BASELINE straight away. Exported so the evals run exactly this logic.
+ */
+export function selectForRecheck(claims: Claim[], named: string[]) {
+  const volatile = claims.filter((c) => c.perishability === "volatile");
+  const entities = unique(volatile.map((c) => c.entity)).slice(0, MAX_ENTITIES);
+  const covered = volatile.filter((c) => entities.includes(c.entity));
+  const rechecked = covered.slice(0, MAX_CLAIMS);
+  const items: DiffItem[] = [];
+  for (const e of named) if (!claims.some((c) => sameEntity(c.entity, e))) items.push(noBaseline(e));
+  return { items, entities, covered, rechecked };
+}
+
 async function* diffFlow(deps: AgentDeps, input: AgentInput, past: Conversation, decision: RouteDecision): AsyncGenerator<AgentEvent, { context: string; allowSearch: boolean }> {
   const { llm, search, store } = deps;
   const { signal, tz } = input;
@@ -118,13 +133,7 @@ async function* diffFlow(deps: AgentDeps, input: AgentInput, past: Conversation,
     await store.patch(past.id, { claims });
   }
 
-  const volatile = claims.filter((c) => c.perishability === "volatile");
-  const entities = unique(volatile.map((c) => c.entity)).slice(0, MAX_ENTITIES);
-  const covered = volatile.filter((c) => entities.includes(c.entity));
-  const rechecked = covered.slice(0, MAX_CLAIMS);
-
-  const items: DiffItem[] = [];
-  for (const e of decision.entities) if (!claims.some((c) => sameEntity(c.entity, e))) items.push(noBaseline(e));
+  const { items, entities, covered, rechecked } = selectForRecheck(claims, decision.entities);
 
   if (rechecked.length === 0) {
     const none = "The earlier conversation has no stored prices, plans or other checkable values, so there is NO BASELINE to compare against. Say that plainly. You may research the current state, but do not claim anything changed.";

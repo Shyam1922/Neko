@@ -1,0 +1,74 @@
+{
+  "_about": "Then-versus-now checks. Each scenario takes an earlier conversation (a key from history.json, or one written here), the products the user named, and FIXED search results, so verdicts don't depend on what the web says today. The model extracts claims from the old answer and reads current values from these results; code checks every quote and decides each verdict. expect lists the verdict for each product (and the attribute word to look for).",
+  "scenarios": [
+    {
+      "id": "v01",
+      "conversation": "neon",
+      "named": ["Neon", "Supabase"],
+      "hits": {
+        "Neon": [{ "url": "https://neon.com/pricing", "title": "Neon pricing", "excerpts": ["Launch: $19/month, billed monthly. Includes 10 GB of storage and autoscaling up to 4 CU."] }]
+      },
+      "expect": [
+        { "entity": "Neon", "attribute": "price", "verdict": "unchanged" },
+        { "entity": "Supabase", "verdict": "no_baseline" }
+      ]
+    },
+    {
+      "id": "v02",
+      "conversation": "vercel",
+      "named": ["Vercel"],
+      "hits": {
+        "Vercel": [{ "url": "https://vercel.com/pricing", "title": "Vercel pricing", "excerpts": ["Pro: $25 per user per month, plus usage. Includes 1 TB of fast data transfer."] }]
+      },
+      "expect": [{ "entity": "Vercel", "attribute": "price", "verdict": "changed" }]
+    },
+    {
+      "id": "v03",
+      "conversation": "crm",
+      "named": ["HubSpot", "Pipedrive"],
+      "hits": {
+        "HubSpot": [{ "url": "https://www.hubspot.com/pricing/sales", "title": "HubSpot Sales Hub pricing", "excerpts": ["Sales Hub Professional: $100 per seat per month, billed annually. Starter: $15 per seat per month."] }],
+        "Pipedrive": [{ "url": "https://www.pipedrive.com/en/pricing", "title": "Pipedrive pricing", "excerpts": ["Essential: $14 per seat per month, billed annually. Contact sales to compare other plans."] }]
+      },
+      "expect": [
+        { "entity": "HubSpot", "attribute": "price", "verdict": "changed" },
+        { "entity": "Pipedrive", "attribute": "price", "verdict": "couldnt_verify" }
+      ]
+    },
+    {
+      "id": "v04",
+      "conversation": "gold",
+      "named": ["gold"],
+      "hits": {
+        "Gold": [{ "url": "https://example-markets.com/gold-week", "title": "Gold markets this week", "excerpts": ["Gold prices swung sharply this week as traders weighed interest-rate cuts. Analysts expect volatility to continue into December."] }]
+      },
+      "expect": [{ "entity": "Gold", "attribute": "price", "verdict": "couldnt_verify" }]
+    },
+    {
+      "id": "v05",
+      "at": "2026-11-04T09:00:00Z",
+      "messages": [
+        { "role": "user", "text": "What's Railway's cheapest paid plan?" },
+        { "role": "assistant", "searched": true, "text": "Railway's Hobby plan costs $5 per month and includes $5 of usage." }
+      ],
+      "named": ["Railway"],
+      "hits": {
+        "Railway": [{ "url": "https://railway.com/pricing", "title": "Railway pricing", "excerpts": ["Hobby: $5 / month. Includes $5 of monthly usage credits."] }]
+      },
+      "expect": [{ "entity": "Railway", "attribute": "price", "verdict": "unchanged" }]
+    },
+    {
+      "id": "v06",
+      "at": "2026-11-05T09:00:00Z",
+      "messages": [
+        { "role": "user", "text": "How much is Notion for a team?" },
+        { "role": "assistant", "searched": true, "text": "Notion Plus costs $10 per seat per month, billed annually." }
+      ],
+      "named": ["Notion"],
+      "hits": {
+        "Notion": [{ "url": "https://www.notion.com/pricing", "title": "Notion pricing", "excerpts": ["Plus: $12 per seat per month billed annually, or $14 billed monthly."] }]
+      },
+      "expect": [{ "entity": "Notion", "attribute": "price", "verdict": "changed" }]
+    }
+  ]
+}

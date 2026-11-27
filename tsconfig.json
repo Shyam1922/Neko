@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "esModuleInterop": true
   },
-  "include": ["src", "scripts", "test"]
+  "include": ["src", "scripts", "test", "eval"]
 }

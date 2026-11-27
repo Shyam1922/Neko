@@ -89,6 +89,7 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | --- | --- |
 | `npm run dev` | Start the server with auto-reload |
 | `npm test` | Unit tests (no network, key or database server needed; set `TEST_DATABASE_URL` to run them against a real Postgres) |
+| `npm run eval` | The eval scorecard (needs the key; about 5 minutes on a free key) |
 | `npm run stats` | Usage from the database: people who sent a message, returning people, answers, median and p90 answer time, per day. Set `DATABASE_URL` for a deployed database |
 | `npm run import:json` | Copies chats and profile facts saved by older versions (`data/*.json`) into the database. Stop the server first |
 | `npm run typecheck` | TypeScript check |
@@ -107,6 +108,28 @@ Everything is stored in **Postgres**: `users`, `conversations`, `messages` and `
 There is no sign-up. The first message you send creates an anonymous account and stores its random id in an HttpOnly cookie. Every query filters on that id, so people sharing one server never see each other's chats or profile. Clearing your cookies starts a fresh, empty account.
 
 In the sidebar, hover a chat to **rename** or **delete** it. Deleting a chat removes its messages; facts it taught Neko stay in your profile until you remove them there.
+
+## Evals
+
+`npm run eval` runs Neko's real router, recall, personalisation and then-versus-now code with a real model against fixed fixtures ([eval/fixtures](eval/fixtures)), then prints a scorecard. No web search is called: each then-versus-now scenario brings fixed search results, so a verdict can't change because the web did. The scoring rules are in [eval/score.ts](eval/score.ts), unit-tested.
+
+| Metric | What it checks | gemini-3.5-flash-lite |
+| --- | --- | --- |
+| Router accuracy | 39 messages sent down the right path (chat, research, memory, then-vs-now) | 100% |
+| Recall@1, keywords only | 27 memory questions: the right chat first, an honest "no record", or "which one?" when ambiguous | 56% |
+| **Recall@1, hybrid** | the same questions with embeddings added | **96%** (held-out 100%) |
+| Verdict accuracy | 8 Changed / Unchanged / Couldn't verify / No baseline verdicts | 100% |
+| Invented quotes reaching the answer | quotes not literally in their source, after code's checks | **0** |
+| Profile facts | right facts saved; passwords, emails, phones, cards, others' facts never saved | 100%, 0 unsafe |
+| Median model call | router, claim extraction, comparison | 1.0–1.3 s |
+
+Embeddings take recall from 56% to 96%: most of the gain is questions worded differently from the chat ("East Africa" for a Uganda chat). Thresholds were tuned on a dev split and checked on 8 held-out questions written before tuning; how, and what was deliberately *not* tuned, is in [DECISIONS.md](DECISIONS.md). Every case and call is saved in [eval/results](eval/results).
+
+```bash
+npm run eval                                  # the configured model, all suites
+npm run eval -- --model gemini-3.5-flash      # another model
+npm run eval -- --suites router,recall        # some suites only
+```
 
 ## Deploy
 
@@ -179,4 +202,4 @@ test/                  unit tests with fake models and a fake search
 
 ## Limits
 
-Real runs cover a handful of conversations, not an evaluation set. Search turns take roughly 11 to 22 seconds on the free tier. A chat is titled by its first message until you rename it. Accounts are anonymous and tied to one browser. See the *Known limits* section of [DESIGN.md](DESIGN.md) for the full list.
+The eval set is small (about 60 judged items, one made-up user), so one case moves recall by about 4 points. Search turns take roughly 11 to 22 seconds on the free tier. A chat is titled by its first message until you rename it. Accounts are anonymous and tied to one browser. See the *Known limits* section of [DESIGN.md](DESIGN.md) for the full list.

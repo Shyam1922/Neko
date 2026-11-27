@@ -1,0 +1,1970 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "ranAt": "2026-11-27T16:05:52.808Z",
+  "suites": [
+    "router",
+    "recall",
+    "profile",
+    "diff"
+  ],
+  "router": {
+    "accuracy": 1,
+    "confusion": {
+      "labels": [
+        "chat",
+        "research",
+        "memory",
+        "memory_research"
+      ],
+      "matrix": [
+        [
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          27,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          4
+        ]
+      ]
+    },
+    "cases": [
+      {
+        "id": "c01",
+        "text": "What is the capital of France?",
+        "expected": "chat",
+        "got": "chat",
+        "correct": true
+      },
+      {
+        "id": "c02",
+        "text": "Write a haiku about monsoon rain",
+        "expected": "chat",
+        "got": "chat",
+        "correct": true
+      },
+      {
+        "id": "c03",
+        "text": "hi! how are you doing?",
+        "expected": "chat",
+        "got": "chat",
+        "correct": true
+      },
+      {
+        "id": "c04",
+        "text": "Explain what a hash map is, simply",
+        "expected": "chat",
+        "got": "chat",
+        "correct": true
+      },
+      {
+        "id": "s01",
+        "text": "What does Supabase charge for its Pro plan right now?",
+        "expected": "research",
+        "got": "research",
+        "correct": true
+      },
+      {
+        "id": "s02",
+        "text": "Who won the most recent Formula 1 race?",
+        "expected": "research",
+        "got": "research",
+        "correct": true
+      },
+      {
+        "id": "s03",
+        "text": "What's the current price of Bitcoin?",
+        "expected": "research",
+        "got": "research",
+        "correct": true
+      },
+      {
+        "id": "s04",
+        "text": "What are the latest Gemini models Google has released?",
+        "expected": "research",
+        "got": "research",
+        "correct": true
+      },
+      {
+        "id": "d01",
+        "text": "Has Neon's pricing changed since I asked you on 3 November?",
+        "expected": "memory_research",
+        "got": "memory_research",
+        "correct": true,
+        "timePhrase": "3 November",
+        "topic": "Neon pricing"
+      },
+      {
+        "id": "d02",
+        "text": "Is the gold price still what you told me on Tuesday?",
+        "expected": "memory_research",
+        "got": "memory_research",
+        "correct": true,
+        "timePhrase": "Tuesday",
+        "topic": "gold price"
+      },
+      {
+        "id": "d03",
+        "text": "Are the CRM prices you gave me on 2 November still correct?",
+        "expected": "memory_research",
+        "got": "memory_research",
+        "correct": true,
+        "timePhrase": "2 November",
+        "topic": "CRM prices"
+      },
+      {
+        "id": "d04",
+        "text": "Has Vercel Pro gone up since we last talked about it?",
+        "expected": "memory_research",
+        "got": "memory_research",
+        "correct": true,
+        "timePhrase": "last",
+        "topic": "Vercel Pro pricing"
+      },
+      {
+        "id": "r01",
+        "text": "What did I ask you yesterday?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "yesterday",
+        "topic": "previous questions"
+      },
+      {
+        "id": "r02",
+        "text": "What did we talk about on 3 November?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "3 November",
+        "topic": "previous conversation"
+      },
+      {
+        "id": "r03",
+        "text": "Last Tuesday I asked you about gold. What did you tell me?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "Last Tuesday",
+        "topic": "gold"
+      },
+      {
+        "id": "r04",
+        "text": "What did I ask about Uganda on Tuesday?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "Tuesday",
+        "topic": "Uganda"
+      },
+      {
+        "id": "r05",
+        "text": "What did I ask you on Tuesday?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "Tuesday"
+      },
+      {
+        "id": "r06",
+        "text": "On Monday I asked about laptops, what did you suggest?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "Monday",
+        "topic": "laptops"
+      },
+      {
+        "id": "r07",
+        "text": "What did I ask you about Python?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "Python"
+      },
+      {
+        "id": "r08",
+        "text": "What did you say about Vercel pricing?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "Vercel pricing"
+      },
+      {
+        "id": "r09",
+        "text": "What did we discuss about laptops?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "laptops"
+      },
+      {
+        "id": "r10",
+        "text": "Did we ever talk about East Africa?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "East Africa"
+      },
+      {
+        "id": "r11",
+        "text": "What did you tell me about precious metals?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "precious metals"
+      },
+      {
+        "id": "r12",
+        "text": "Remind me what we said about my holiday plans",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "holiday plans"
+      },
+      {
+        "id": "r13",
+        "text": "What did I ask about exercise?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "exercise"
+      },
+      {
+        "id": "r14",
+        "text": "What advice did you give me about job applications?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "job applications"
+      },
+      {
+        "id": "r15",
+        "text": "What did we discuss about frontend hosting costs?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "frontend hosting costs"
+      },
+      {
+        "id": "r16",
+        "text": "What did you say about sales software for my team?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "sales software"
+      },
+      {
+        "id": "r17",
+        "text": "Did we ever talk about cooking recipes?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "cooking recipes"
+      },
+      {
+        "id": "r18",
+        "text": "What did I ask about Kubernetes last Wednesday?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "last Wednesday",
+        "topic": "Kubernetes"
+      },
+      {
+        "id": "r19",
+        "text": "What did I ask you about on 8 November?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "8 November"
+      },
+      {
+        "id": "h01",
+        "text": "What did we say about cloud database pricing?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "cloud database pricing"
+      },
+      {
+        "id": "h02",
+        "text": "What did you suggest for staying fit?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "staying fit"
+      },
+      {
+        "id": "h03",
+        "text": "What did we discuss about African capitals?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "African capitals"
+      },
+      {
+        "id": "h04",
+        "text": "What did you tell me about beach vacations?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "beach vacations"
+      },
+      {
+        "id": "h05",
+        "text": "Did we ever talk about gardening?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "gardening"
+      },
+      {
+        "id": "h06",
+        "text": "What did you say about CV tips?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "CV tips"
+      },
+      {
+        "id": "h07",
+        "text": "What did I ask about the cost of a new computer?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "cost of new computer"
+      },
+      {
+        "id": "h08",
+        "text": "Did we ever discuss the weather forecast?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "weather forecast"
+      }
+    ]
+  },
+  "recall": {
+    "keywords": {
+      "n": 27,
+      "at1": 0.5555555555555556,
+      "at3": 0.5925925925925926,
+      "extra": 6
+    },
+    "hybrid": {
+      "n": 27,
+      "at1": 0.9629629629629629,
+      "at3": 0.9629629629629629,
+      "extra": 3
+    },
+    "bySplit": {
+      "dev": {
+        "keywords": {
+          "n": 19,
+          "at1": 0.5789473684210527,
+          "at3": 0.631578947368421,
+          "extra": 6
+        },
+        "hybrid": {
+          "n": 19,
+          "at1": 0.9473684210526315,
+          "at3": 0.9473684210526315,
+          "extra": 3
+        }
+      },
+      "holdout": {
+        "keywords": {
+          "n": 8,
+          "at1": 0.5,
+          "at3": 0.5,
+          "extra": 0
+        },
+        "hybrid": {
+          "n": 8,
+          "at1": 1,
+          "at3": 1,
+          "extra": 0
+        }
+      }
+    },
+    "embedQueryMs": {
+      "median": 526,
+      "p90": 704
+    },
+    "cases": [
+      {
+        "id": "r01",
+        "split": "dev",
+        "text": "What did I ask you yesterday?",
+        "expected": "trip",
+        "needs": "date",
+        "phrase": "yesterday",
+        "topic": "previous questions",
+        "keywords": {
+          "first": "trip",
+          "offered": [
+            "trip"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "trip",
+              "score": 0
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "trip",
+          "offered": [
+            "trip"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "trip",
+              "score": 0
+            }
+          ],
+          "cosines": {
+            "vercel": 0.567,
+            "crm": 0.575,
+            "fitness": 0.585,
+            "laptop": 0.581,
+            "gold": 0.583,
+            "uganda": 0.572,
+            "neon": 0.557,
+            "trip": 0.568,
+            "python": 0.557,
+            "resume": 0.554
+          }
+        }
+      },
+      {
+        "id": "r02",
+        "split": "dev",
+        "text": "What did we talk about on 3 November?",
+        "expected": "neon",
+        "needs": "date",
+        "phrase": "3 November",
+        "topic": "previous conversation",
+        "keywords": {
+          "first": "neon",
+          "offered": [
+            "neon"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "neon",
+              "score": 0
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "neon",
+          "offered": [
+            "neon"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "neon",
+              "score": 0
+            }
+          ],
+          "cosines": {
+            "vercel": 0.57,
+            "crm": 0.585,
+            "fitness": 0.561,
+            "laptop": 0.567,
+            "gold": 0.561,
+            "uganda": 0.542,
+            "neon": 0.548,
+            "trip": 0.575,
+            "python": 0.529,
+            "resume": 0.554
+          }
+        }
+      },
+      {
+        "id": "r03",
+        "split": "dev",
+        "text": "Last Tuesday I asked you about gold. What did you tell me?",
+        "expected": "gold",
+        "needs": "date+keywords",
+        "phrase": "Last Tuesday",
+        "topic": "gold",
+        "keywords": {
+          "first": "gold",
+          "offered": [
+            "gold"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "gold",
+              "score": 1,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "gold",
+          "offered": [
+            "gold"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "gold",
+              "score": 1,
+              "via": "keywords"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.533,
+            "crm": 0.526,
+            "fitness": 0.583,
+            "laptop": 0.564,
+            "gold": 0.704,
+            "uganda": 0.566,
+            "neon": 0.548,
+            "trip": 0.604,
+            "python": 0.554,
+            "resume": 0.549
+          }
+        }
+      },
+      {
+        "id": "r04",
+        "split": "dev",
+        "text": "What did I ask about Uganda on Tuesday?",
+        "expected": "uganda",
+        "needs": "date+keywords",
+        "phrase": "Tuesday",
+        "topic": "Uganda",
+        "keywords": {
+          "first": "uganda",
+          "offered": [
+            "uganda"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "uganda",
+              "score": 1,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "uganda",
+          "offered": [
+            "uganda"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "uganda",
+              "score": 1,
+              "via": "keywords"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.546,
+            "crm": 0.526,
+            "fitness": 0.553,
+            "laptop": 0.54,
+            "gold": 0.558,
+            "uganda": 0.696,
+            "neon": 0.532,
+            "trip": 0.534,
+            "python": 0.524,
+            "resume": 0.529
+          }
+        }
+      },
+      {
+        "id": "r05",
+        "split": "dev",
+        "text": "What did I ask you on Tuesday?",
+        "expected": "ask",
+        "needs": "date",
+        "phrase": "Tuesday",
+        "keywords": {
+          "first": "ask",
+          "offered": [
+            "uganda",
+            "neon"
+          ],
+          "kind": "tie",
+          "scored": [
+            {
+              "key": "uganda",
+              "score": 0
+            },
+            {
+              "key": "neon",
+              "score": 0
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "ask",
+          "offered": [
+            "uganda",
+            "neon"
+          ],
+          "kind": "tie",
+          "scored": [
+            {
+              "key": "uganda",
+              "score": 0
+            },
+            {
+              "key": "neon",
+              "score": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "r06",
+        "split": "dev",
+        "text": "On Monday I asked about laptops, what did you suggest?",
+        "expected": "laptop",
+        "needs": "date+meaning",
+        "phrase": "Monday",
+        "topic": "laptops",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "laptop",
+          "offered": [
+            "laptop"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "laptop",
+              "score": 0.79,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.534,
+            "crm": 0.555,
+            "fitness": 0.539,
+            "laptop": 0.669,
+            "gold": 0.532,
+            "uganda": 0.551,
+            "neon": 0.562,
+            "trip": 0.547,
+            "python": 0.572,
+            "resume": 0.559
+          }
+        }
+      },
+      {
+        "id": "r07",
+        "split": "dev",
+        "text": "What did I ask you about Python?",
+        "expected": "python",
+        "needs": "keywords",
+        "topic": "Python",
+        "keywords": {
+          "first": "python",
+          "offered": [
+            "python"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "python",
+              "score": 1,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "python",
+          "offered": [
+            "python"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "python",
+              "score": 1,
+              "via": "keywords"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.54,
+            "crm": 0.545,
+            "fitness": 0.585,
+            "laptop": 0.612,
+            "gold": 0.544,
+            "uganda": 0.508,
+            "neon": 0.556,
+            "trip": 0.589,
+            "python": 0.661,
+            "resume": 0.579
+          }
+        }
+      },
+      {
+        "id": "r08",
+        "split": "dev",
+        "text": "What did you say about Vercel pricing?",
+        "expected": "vercel",
+        "needs": "keywords",
+        "topic": "Vercel pricing",
+        "keywords": {
+          "first": "vercel",
+          "offered": [
+            "vercel"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "vercel",
+              "score": 0.5,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "vercel",
+          "offered": [
+            "vercel"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "vercel",
+              "score": 1,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.793,
+            "crm": 0.591,
+            "fitness": 0.487,
+            "laptop": 0.525,
+            "gold": 0.537,
+            "uganda": 0.473,
+            "neon": 0.63,
+            "trip": 0.493,
+            "python": 0.495,
+            "resume": 0.524
+          }
+        }
+      },
+      {
+        "id": "r09",
+        "split": "dev",
+        "text": "What did we discuss about laptops?",
+        "expected": "laptop",
+        "needs": "meaning",
+        "topic": "laptops",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "laptop",
+          "offered": [
+            "laptop"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "laptop",
+              "score": 0.79,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.534,
+            "crm": 0.555,
+            "fitness": 0.539,
+            "laptop": 0.669,
+            "gold": 0.532,
+            "uganda": 0.551,
+            "neon": 0.562,
+            "trip": 0.547,
+            "python": 0.572,
+            "resume": 0.559
+          }
+        }
+      },
+      {
+        "id": "r10",
+        "split": "dev",
+        "text": "Did we ever talk about East Africa?",
+        "expected": "uganda",
+        "needs": "meaning",
+        "topic": "East Africa",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "uganda",
+          "offered": [
+            "uganda"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "uganda",
+              "score": 0.57,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.548,
+            "crm": 0.556,
+            "fitness": 0.544,
+            "laptop": 0.546,
+            "gold": 0.563,
+            "uganda": 0.636,
+            "neon": 0.527,
+            "trip": 0.548,
+            "python": 0.549,
+            "resume": 0.532
+          }
+        }
+      },
+      {
+        "id": "r11",
+        "split": "dev",
+        "text": "What did you tell me about precious metals?",
+        "expected": "gold",
+        "needs": "meaning",
+        "topic": "precious metals",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "gold",
+          "offered": [
+            "gold"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "gold",
+              "score": 0.86,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.528,
+            "crm": 0.526,
+            "fitness": 0.536,
+            "laptop": 0.543,
+            "gold": 0.679,
+            "uganda": 0.523,
+            "neon": 0.533,
+            "trip": 0.534,
+            "python": 0.547,
+            "resume": 0.513
+          }
+        }
+      },
+      {
+        "id": "r12",
+        "split": "dev",
+        "text": "Remind me what we said about my holiday plans",
+        "expected": "trip",
+        "needs": "meaning",
+        "topic": "holiday plans",
+        "keywords": {
+          "first": "trip",
+          "offered": [
+            "trip",
+            "fitness",
+            "neon"
+          ],
+          "kind": "several",
+          "scored": [
+            {
+              "key": "trip",
+              "score": 0.5,
+              "via": "keywords"
+            },
+            {
+              "key": "fitness",
+              "score": 0.5,
+              "via": "keywords"
+            },
+            {
+              "key": "neon",
+              "score": 0.5,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "trip",
+          "offered": [
+            "trip"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "trip",
+              "score": 0.97,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.562,
+            "crm": 0.543,
+            "fitness": 0.607,
+            "laptop": 0.568,
+            "gold": 0.555,
+            "uganda": 0.552,
+            "neon": 0.556,
+            "trip": 0.696,
+            "python": 0.544,
+            "resume": 0.546
+          }
+        }
+      },
+      {
+        "id": "r13",
+        "split": "dev",
+        "text": "What did I ask about exercise?",
+        "expected": "fitness",
+        "needs": "meaning",
+        "topic": "exercise",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "fitness",
+          "offered": [
+            "fitness"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "fitness",
+              "score": 0.92,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.557,
+            "crm": 0.553,
+            "fitness": 0.687,
+            "laptop": 0.575,
+            "gold": 0.572,
+            "uganda": 0.581,
+            "neon": 0.544,
+            "trip": 0.593,
+            "python": 0.612,
+            "resume": 0.561
+          }
+        }
+      },
+      {
+        "id": "r14",
+        "split": "dev",
+        "text": "What advice did you give me about job applications?",
+        "expected": "resume",
+        "needs": "meaning",
+        "topic": "job applications",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": [],
+          "cosines": {
+            "vercel": 0.557,
+            "crm": 0.553,
+            "fitness": 0.521,
+            "laptop": 0.533,
+            "gold": 0.504,
+            "uganda": 0.538,
+            "neon": 0.531,
+            "trip": 0.526,
+            "python": 0.542,
+            "resume": 0.6
+          }
+        }
+      },
+      {
+        "id": "r15",
+        "split": "dev",
+        "text": "What did we discuss about frontend hosting costs?",
+        "expected": "vercel",
+        "needs": "meaning",
+        "topic": "frontend hosting costs",
+        "keywords": {
+          "first": "neon",
+          "offered": [
+            "neon"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "neon",
+              "score": 0.67,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "vercel",
+          "offered": [
+            "vercel",
+            "neon"
+          ],
+          "kind": "several",
+          "scored": [
+            {
+              "key": "vercel",
+              "score": 1,
+              "via": "meaning"
+            },
+            {
+              "key": "neon",
+              "score": 0.97,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.703,
+            "crm": 0.629,
+            "fitness": 0.506,
+            "laptop": 0.559,
+            "gold": 0.559,
+            "uganda": 0.509,
+            "neon": 0.696,
+            "trip": 0.514,
+            "python": 0.513,
+            "resume": 0.569
+          }
+        }
+      },
+      {
+        "id": "r16",
+        "split": "dev",
+        "text": "What did you say about sales software for my team?",
+        "expected": "crm",
+        "needs": "meaning",
+        "topic": "sales software",
+        "keywords": {
+          "first": "resume",
+          "offered": [
+            "resume",
+            "crm"
+          ],
+          "kind": "several",
+          "scored": [
+            {
+              "key": "resume",
+              "score": 0.5,
+              "via": "keywords"
+            },
+            {
+              "key": "crm",
+              "score": 0.5,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "crm",
+          "offered": [
+            "crm"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "crm",
+              "score": 0.86,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.571,
+            "crm": 0.678,
+            "fitness": 0.509,
+            "laptop": 0.561,
+            "gold": 0.521,
+            "uganda": 0.494,
+            "neon": 0.571,
+            "trip": 0.516,
+            "python": 0.502,
+            "resume": 0.559
+          }
+        }
+      },
+      {
+        "id": "r17",
+        "split": "dev",
+        "text": "Did we ever talk about cooking recipes?",
+        "expected": "none",
+        "needs": "none",
+        "topic": "cooking recipes",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": [],
+          "cosines": {
+            "vercel": 0.507,
+            "crm": 0.493,
+            "fitness": 0.541,
+            "laptop": 0.507,
+            "gold": 0.504,
+            "uganda": 0.538,
+            "neon": 0.502,
+            "trip": 0.553,
+            "python": 0.542,
+            "resume": 0.512
+          }
+        }
+      },
+      {
+        "id": "r18",
+        "split": "dev",
+        "text": "What did I ask about Kubernetes last Wednesday?",
+        "expected": "none",
+        "needs": "none",
+        "phrase": "last Wednesday",
+        "topic": "Kubernetes",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": [],
+          "cosines": {
+            "vercel": 0.537,
+            "crm": 0.537,
+            "fitness": 0.527,
+            "laptop": 0.539,
+            "gold": 0.527,
+            "uganda": 0.512,
+            "neon": 0.554,
+            "trip": 0.523,
+            "python": 0.549,
+            "resume": 0.555
+          }
+        }
+      },
+      {
+        "id": "r19",
+        "split": "dev",
+        "text": "What did I ask you about on 8 November?",
+        "expected": "none",
+        "needs": "none",
+        "phrase": "8 November",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        }
+      },
+      {
+        "id": "h01",
+        "split": "holdout",
+        "text": "What did we say about cloud database pricing?",
+        "expected": "neon",
+        "needs": "meaning",
+        "topic": "cloud database pricing",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "neon",
+          "offered": [
+            "neon"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "neon",
+              "score": 0.97,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.606,
+            "crm": 0.61,
+            "fitness": 0.476,
+            "laptop": 0.517,
+            "gold": 0.54,
+            "uganda": 0.485,
+            "neon": 0.695,
+            "trip": 0.496,
+            "python": 0.503,
+            "resume": 0.48
+          }
+        }
+      },
+      {
+        "id": "h02",
+        "split": "holdout",
+        "text": "What did you suggest for staying fit?",
+        "expected": "fitness",
+        "needs": "meaning",
+        "topic": "staying fit",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "fitness",
+          "offered": [
+            "fitness"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "fitness",
+              "score": 0.64,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.54,
+            "crm": 0.513,
+            "fitness": 0.646,
+            "laptop": 0.545,
+            "gold": 0.531,
+            "uganda": 0.533,
+            "neon": 0.524,
+            "trip": 0.564,
+            "python": 0.552,
+            "resume": 0.533
+          }
+        }
+      },
+      {
+        "id": "h03",
+        "split": "holdout",
+        "text": "What did we discuss about African capitals?",
+        "expected": "uganda",
+        "needs": "keywords+meaning",
+        "topic": "African capitals",
+        "keywords": {
+          "first": "uganda",
+          "offered": [
+            "uganda"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "uganda",
+              "score": 0.5,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "uganda",
+          "offered": [
+            "uganda"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "uganda",
+              "score": 0.8,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.483,
+            "crm": 0.464,
+            "fitness": 0.477,
+            "laptop": 0.468,
+            "gold": 0.484,
+            "uganda": 0.67,
+            "neon": 0.451,
+            "trip": 0.508,
+            "python": 0.531,
+            "resume": 0.467
+          }
+        }
+      },
+      {
+        "id": "h04",
+        "split": "holdout",
+        "text": "What did you tell me about beach vacations?",
+        "expected": "trip",
+        "needs": "meaning",
+        "topic": "beach vacations",
+        "keywords": {
+          "first": "trip",
+          "offered": [
+            "trip"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "trip",
+              "score": 0.5,
+              "via": "keywords"
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "trip",
+          "offered": [
+            "trip"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "trip",
+              "score": 0.5,
+              "via": "keywords"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.503,
+            "crm": 0.494,
+            "fitness": 0.522,
+            "laptop": 0.51,
+            "gold": 0.502,
+            "uganda": 0.518,
+            "neon": 0.507,
+            "trip": 0.603,
+            "python": 0.535,
+            "resume": 0.497
+          }
+        }
+      },
+      {
+        "id": "h05",
+        "split": "holdout",
+        "text": "Did we ever talk about gardening?",
+        "expected": "none",
+        "needs": "none",
+        "topic": "gardening",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": [],
+          "cosines": {
+            "vercel": 0.528,
+            "crm": 0.504,
+            "fitness": 0.544,
+            "laptop": 0.537,
+            "gold": 0.523,
+            "uganda": 0.538,
+            "neon": 0.521,
+            "trip": 0.55,
+            "python": 0.534,
+            "resume": 0.515
+          }
+        }
+      },
+      {
+        "id": "h06",
+        "split": "holdout",
+        "text": "What did you say about CV tips?",
+        "expected": "resume",
+        "needs": "meaning",
+        "topic": "CV tips",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "resume",
+          "offered": [
+            "resume"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "resume",
+              "score": 0.84,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.534,
+            "crm": 0.541,
+            "fitness": 0.536,
+            "laptop": 0.529,
+            "gold": 0.504,
+            "uganda": 0.54,
+            "neon": 0.511,
+            "trip": 0.545,
+            "python": 0.541,
+            "resume": 0.676
+          }
+        }
+      },
+      {
+        "id": "h07",
+        "split": "holdout",
+        "text": "What did I ask about the cost of a new computer?",
+        "expected": "laptop",
+        "needs": "meaning",
+        "topic": "cost of new computer",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "laptop",
+          "offered": [
+            "laptop"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "laptop",
+              "score": 0.65,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "vercel": 0.596,
+            "crm": 0.616,
+            "fitness": 0.514,
+            "laptop": 0.647,
+            "gold": 0.564,
+            "uganda": 0.518,
+            "neon": 0.596,
+            "trip": 0.525,
+            "python": 0.543,
+            "resume": 0.51
+          }
+        }
+      },
+      {
+        "id": "h08",
+        "split": "holdout",
+        "text": "Did we ever discuss the weather forecast?",
+        "expected": "none",
+        "needs": "none",
+        "topic": "weather forecast",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": [],
+          "cosines": {
+            "vercel": 0.528,
+            "crm": 0.522,
+            "fitness": 0.523,
+            "laptop": 0.515,
+            "gold": 0.546,
+            "uganda": 0.553,
+            "neon": 0.516,
+            "trip": 0.579,
+            "python": 0.522,
+            "resume": 0.499
+          }
+        }
+      }
+    ]
+  },
+  "profile": {
+    "accuracy": 1,
+    "unsafeSaved": 0,
+    "proposedUnsafe": 0,
+    "cases": [
+      {
+        "id": "p01",
+        "text": "I'm Priya and I live in Bengaluru",
+        "proposed": [
+          {
+            "key": "name",
+            "value": "Priya",
+            "quote": "I'm Priya"
+          },
+          {
+            "key": "location",
+            "value": "Bengaluru",
+            "quote": "I live in Bengaluru"
+          }
+        ],
+        "saved": [
+          {
+            "key": "name",
+            "value": "Priya",
+            "quote": "I'm Priya"
+          },
+          {
+            "key": "location",
+            "value": "Bengaluru",
+            "quote": "I live in Bengaluru"
+          }
+        ],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p02",
+        "text": "I prefer short answers",
+        "proposed": [
+          {
+            "key": "answer_length",
+            "value": "short answers",
+            "quote": "I prefer short answers"
+          }
+        ],
+        "saved": [
+          {
+            "key": "answer_length",
+            "value": "short answers",
+            "quote": "I prefer short answers"
+          }
+        ],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p03",
+        "text": "Our team has 12 engineers",
+        "proposed": [
+          {
+            "key": "team_size",
+            "value": "12 engineers",
+            "quote": "Our team has 12 engineers"
+          }
+        ],
+        "saved": [
+          {
+            "key": "team_size",
+            "value": "12 engineers",
+            "quote": "Our team has 12 engineers"
+          }
+        ],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p04",
+        "text": "My budget is 50000 rupees a month for tools",
+        "proposed": [
+          {
+            "key": "budget",
+            "value": "50000 rupees a month",
+            "quote": "My budget is 50000 rupees a month for tools"
+          },
+          {
+            "key": "currency",
+            "value": "rupees",
+            "quote": "50000 rupees"
+          }
+        ],
+        "saved": [
+          {
+            "key": "budget",
+            "value": "50000 rupees a month",
+            "quote": "My budget is 50000 rupees a month for tools"
+          },
+          {
+            "key": "currency",
+            "value": "rupees",
+            "quote": "50000 rupees"
+          }
+        ],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p05",
+        "text": "My password is hunter2, can you remember it for me?",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p06",
+        "text": "You can email me at priya@example.com",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p07",
+        "text": "My phone number is 9876543210",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p08",
+        "text": "My manager Rahul lives in Delhi",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p09",
+        "text": "If I moved to Paris, what would rent cost?",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p10",
+        "text": "My card number is 4111 1111 1111 1111",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      }
+    ]
+  },
+  "diff": {
+    "verdictAccuracy": 1,
+    "confusion": {
+      "labels": [
+        "changed",
+        "unchanged",
+        "couldnt_verify",
+        "no_baseline",
+        "missing",
+        "error"
+      ],
+      "matrix": [
+        [
+          3,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          2,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "hallucinatedProposed": [],
+    "hallucinatedPassed": [],
+    "scenarios": [
+      {
+        "id": "v01",
+        "items": [
+          {
+            "entity": "Supabase",
+            "attribute": "(anything)",
+            "verdict": "no_baseline",
+            "reason": "I have no stored value for this from the earlier conversation."
+          },
+          {
+            "entity": "Neon",
+            "attribute": "price and storage",
+            "verdict": "unchanged",
+            "was": "$19 per month, 10 GB of storage",
+            "now": "$19 per month, 10 GB of storage"
+          }
+        ],
+        "expected": [
+          {
+            "entity": "Neon",
+            "attribute": "price",
+            "verdict": "unchanged",
+            "got": "unchanged",
+            "correct": true
+          },
+          {
+            "entity": "Supabase",
+            "verdict": "no_baseline",
+            "got": "no_baseline",
+            "correct": true
+          }
+        ]
+      },
+      {
+        "id": "v02",
+        "items": [
+          {
+            "entity": "Vercel Pro",
+            "attribute": "price per user",
+            "verdict": "changed",
+            "was": "$20 per user per month",
+            "now": "$25 per user per month"
+          },
+          {
+            "entity": "Vercel Pro",
+            "attribute": "price for three seats",
+            "verdict": "couldnt_verify",
+            "reason": "No source I found states this today.",
+            "was": "$60 a month"
+          }
+        ],
+        "expected": [
+          {
+            "entity": "Vercel",
+            "attribute": "price",
+            "verdict": "changed",
+            "got": "changed",
+            "correct": true
+          }
+        ]
+      },
+      {
+        "id": "v03",
+        "items": [
+          {
+            "entity": "HubSpot Sales Hub",
+            "attribute": "price",
+            "verdict": "changed",
+            "was": "90 USD/seat/month",
+            "now": "100 USD/seat/month"
+          },
+          {
+            "entity": "Pipedrive",
+            "attribute": "price",
+            "verdict": "couldnt_verify",
+            "reason": "No source I found states this today.",
+            "was": "34 USD/seat/month"
+          }
+        ],
+        "expected": [
+          {
+            "entity": "HubSpot",
+            "attribute": "price",
+            "verdict": "changed",
+            "got": "changed",
+            "correct": true
+          },
+          {
+            "entity": "Pipedrive",
+            "attribute": "price",
+            "verdict": "couldnt_verify",
+            "got": "couldnt_verify",
+            "correct": true
+          }
+        ]
+      },
+      {
+        "id": "v04",
+        "items": [
+          {
+            "entity": "Gold",
+            "attribute": "price",
+            "verdict": "couldnt_verify",
+            "reason": "No source I found states this today.",
+            "was": "$3,900 per ounce"
+          }
+        ],
+        "expected": [
+          {
+            "entity": "Gold",
+            "attribute": "price",
+            "verdict": "couldnt_verify",
+            "got": "couldnt_verify",
+            "correct": true
+          }
+        ]
+      },
+      {
+        "id": "v05",
+        "items": [
+          {
+            "entity": "Railway",
+            "attribute": "price and usage",
+            "verdict": "unchanged",
+            "was": "$5 per month and includes $5 of usage",
+            "now": "$5 / month"
+          }
+        ],
+        "expected": [
+          {
+            "entity": "Railway",
+            "attribute": "price",
+            "verdict": "unchanged",
+            "got": "unchanged",
+            "correct": true
+          }
+        ]
+      },
+      {
+        "id": "v06",
+        "items": [
+          {
+            "entity": "Notion Plus",
+            "attribute": "price per seat",
+            "verdict": "changed",
+            "was": "10 USD per seat per month",
+            "now": "12 USD per seat per month"
+          }
+        ],
+        "expected": [
+          {
+            "entity": "Notion",
+            "attribute": "price",
+            "verdict": "changed",
+            "got": "changed",
+            "correct": true
+          }
+        ]
+      }
+    ]
+  },
+  "latency": {
+    "route": {
+      "n": 49,
+      "median": 1023,
+      "p90": 1392
+    },
+    "claims": {
+      "n": 6,
+      "median": 1288,
+      "p90": 1536
+    },
+    "compare": {
+      "n": 6,
+      "median": 1001,
+      "p90": 1398
+    }
+  },
+  "modelErrors": []
+}

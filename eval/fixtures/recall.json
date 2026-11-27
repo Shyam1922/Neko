@@ -1,0 +1,194 @@
+{
+  "_about": "Memory questions against history.json. expected = the conversation that should be recalled first, 'none' when there is no such chat (Neko must say so, not guess), or 'ask' when the question is ambiguous (Neko must ask which one). 'needs' says which signal can find it: 'date', 'keywords' or 'meaning' (words that never appear in the chat). split: 'dev' cases were used to tune thresholds; 'holdout' cases were written before any tuning and never used for it, so their score shows whether the tuning generalises.",
+  "cases": [
+    {
+      "id": "r01",
+      "text": "What did I ask you yesterday?",
+      "expected": "trip",
+      "needs": "date",
+      "split": "dev"
+    },
+    {
+      "id": "r02",
+      "text": "What did we talk about on 3 November?",
+      "expected": "neon",
+      "needs": "date",
+      "split": "dev"
+    },
+    {
+      "id": "r03",
+      "text": "Last Tuesday I asked you about gold. What did you tell me?",
+      "expected": "gold",
+      "needs": "date+keywords",
+      "split": "dev"
+    },
+    {
+      "id": "r04",
+      "text": "What did I ask about Uganda on Tuesday?",
+      "expected": "uganda",
+      "needs": "date+keywords",
+      "split": "dev"
+    },
+    {
+      "id": "r05",
+      "text": "What did I ask you on Tuesday?",
+      "expected": "ask",
+      "needs": "date",
+      "split": "dev"
+    },
+    {
+      "id": "r06",
+      "text": "On Monday I asked about laptops, what did you suggest?",
+      "expected": "laptop",
+      "needs": "date+meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r07",
+      "text": "What did I ask you about Python?",
+      "expected": "python",
+      "needs": "keywords",
+      "split": "dev"
+    },
+    {
+      "id": "r08",
+      "text": "What did you say about Vercel pricing?",
+      "expected": "vercel",
+      "needs": "keywords",
+      "split": "dev"
+    },
+    {
+      "id": "r09",
+      "text": "What did we discuss about laptops?",
+      "expected": "laptop",
+      "needs": "meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r10",
+      "text": "Did we ever talk about East Africa?",
+      "expected": "uganda",
+      "needs": "meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r11",
+      "text": "What did you tell me about precious metals?",
+      "expected": "gold",
+      "needs": "meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r12",
+      "text": "Remind me what we said about my holiday plans",
+      "expected": "trip",
+      "needs": "meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r13",
+      "text": "What did I ask about exercise?",
+      "expected": "fitness",
+      "needs": "meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r14",
+      "text": "What advice did you give me about job applications?",
+      "expected": "resume",
+      "needs": "meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r15",
+      "text": "What did we discuss about frontend hosting costs?",
+      "expected": "vercel",
+      "needs": "meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r16",
+      "text": "What did you say about sales software for my team?",
+      "expected": "crm",
+      "needs": "meaning",
+      "split": "dev"
+    },
+    {
+      "id": "r17",
+      "text": "Did we ever talk about cooking recipes?",
+      "expected": "none",
+      "needs": "none",
+      "split": "dev"
+    },
+    {
+      "id": "r18",
+      "text": "What did I ask about Kubernetes last Wednesday?",
+      "expected": "none",
+      "needs": "none",
+      "split": "dev"
+    },
+    {
+      "id": "r19",
+      "text": "What did I ask you about on 8 November?",
+      "expected": "none",
+      "needs": "none",
+      "split": "dev"
+    },
+    {
+      "id": "h01",
+      "text": "What did we say about cloud database pricing?",
+      "expected": "neon",
+      "needs": "meaning",
+      "split": "holdout"
+    },
+    {
+      "id": "h02",
+      "text": "What did you suggest for staying fit?",
+      "expected": "fitness",
+      "needs": "meaning",
+      "split": "holdout"
+    },
+    {
+      "id": "h03",
+      "text": "What did we discuss about African capitals?",
+      "expected": "uganda",
+      "needs": "keywords+meaning",
+      "split": "holdout"
+    },
+    {
+      "id": "h04",
+      "text": "What did you tell me about beach vacations?",
+      "expected": "trip",
+      "needs": "meaning",
+      "split": "holdout"
+    },
+    {
+      "id": "h05",
+      "text": "Did we ever talk about gardening?",
+      "expected": "none",
+      "needs": "none",
+      "split": "holdout"
+    },
+    {
+      "id": "h06",
+      "text": "What did you say about CV tips?",
+      "expected": "resume",
+      "needs": "meaning",
+      "split": "holdout"
+    },
+    {
+      "id": "h07",
+      "text": "What did I ask about the cost of a new computer?",
+      "expected": "laptop",
+      "needs": "meaning",
+      "split": "holdout"
+    },
+    {
+      "id": "h08",
+      "text": "Did we ever discuss the weather forecast?",
+      "expected": "none",
+      "needs": "none",
+      "split": "holdout"
+    }
+  ]
+}

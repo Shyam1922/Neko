@@ -1,0 +1,87 @@
+{
+  "_about": "A made-up user's past conversations. The evals run as if today were Thursday 12 November 2026, 13:30 in India (Asia/Kolkata). Times are UTC; 06:00Z is 11:30 IST, so every chat falls on the day named.",
+  "now": "2026-11-12T08:00:00Z",
+  "tz": "Asia/Kolkata",
+  "conversations": [
+    {
+      "key": "crm",
+      "at": "2026-11-02T06:00:00Z",
+      "messages": [
+        { "role": "user", "text": "We shortlisted HubSpot and Pipedrive for our 20-person sales team. What do they cost?" },
+        { "role": "assistant", "searched": true, "text": "HubSpot Sales Hub Professional is $90 per seat per month, billed annually. Pipedrive Advanced is $34 per seat per month, billed annually. For 20 seats that is about $1,800 and $680 a month." }
+      ]
+    },
+    {
+      "key": "neon",
+      "at": "2026-11-03T06:00:00Z",
+      "messages": [
+        { "role": "user", "text": "Postgres hosting: what does Neon cost?" },
+        { "role": "assistant", "searched": true, "text": "Neon's Launch plan costs $19 per month, billed monthly, and includes 10 GB of storage." }
+      ]
+    },
+    {
+      "key": "python",
+      "at": "2026-11-04T06:00:00Z",
+      "messages": [
+        { "role": "user", "text": "Explain list comprehensions in Python with an example" },
+        { "role": "assistant", "text": "A list comprehension builds a list in one line: squares = [x * x for x in range(10)]. You can add a condition: evens = [x for x in range(10) if x % 2 == 0]." }
+      ]
+    },
+    {
+      "key": "vercel",
+      "at": "2026-11-05T06:00:00Z",
+      "messages": [
+        { "role": "user", "text": "How much does Vercel Pro cost for a small team?" },
+        { "role": "assistant", "searched": true, "text": "Vercel Pro costs $20 per user per month. A team of three would pay $60 a month before usage charges." }
+      ]
+    },
+    {
+      "key": "resume",
+      "at": "2026-11-06T06:00:00Z",
+      "messages": [
+        { "role": "user", "text": "How do I write a resume for a software internship?" },
+        { "role": "assistant", "text": "Keep it to one page. Put projects first, each with what you built, the tools, and a number that shows impact. List languages and frameworks you have actually used, and link your GitHub." }
+      ]
+    },
+    {
+      "key": "fitness",
+      "at": "2026-11-07T06:00:00Z",
+      "messages": [
+        { "role": "user", "text": "Give me a beginner workout plan for 3 days a week" },
+        { "role": "assistant", "text": "Day 1: squats, push-ups, rows. Day 2: brisk walk or cycling for 30 minutes. Day 3: lunges, overhead press, plank. Rest between days and add weight slowly." }
+      ]
+    },
+    {
+      "key": "laptop",
+      "at": "2026-11-09T06:00:00Z",
+      "messages": [
+        { "role": "user", "text": "Which notebook should I buy for programming under 80,000 rupees?" },
+        { "role": "assistant", "text": "A MacBook Air M2 or a Lenovo ThinkPad E14 with 16 GB RAM would both suit programming at that budget." }
+      ]
+    },
+    {
+      "key": "gold",
+      "at": "2026-11-10T05:00:00Z",
+      "messages": [
+        { "role": "user", "text": "whats the gold price today" },
+        { "role": "assistant", "searched": true, "text": "Gold is trading at about $3,900 per ounce today." }
+      ]
+    },
+    {
+      "key": "uganda",
+      "at": "2026-11-10T07:00:00Z",
+      "messages": [
+        { "role": "user", "text": "what is the capital of uganda" },
+        { "role": "assistant", "text": "The capital of Uganda is Kampala." }
+      ]
+    },
+    {
+      "key": "trip",
+      "at": "2026-11-11T06:00:00Z",
+      "messages": [
+        { "role": "user", "text": "Plan a 3 day trip to Goa in December" },
+        { "role": "assistant", "text": "Day 1: North Goa beaches and Fort Aguada. Day 2: Old Goa churches and a spice farm. Day 3: South Goa, Palolem beach. Book early: December is peak season." }
+      ]
+    }
+  ]
+}

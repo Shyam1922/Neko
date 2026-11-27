@@ -39,9 +39,15 @@ export type RecallResult =
   | { kind: "none"; reason: "unparsed_phrase" | "no_record"; message: string; nearMatches: Hit[] };
 
 const STOPWORDS = new Set(
-  "the and for with that this what when where which who how did does was were are you your yours about have has had any since from into over than then them they their can could would should will just tell told asked ask last next our out its not but all".split(" "),
+  "the and for with that this what when where which who how did does was were are you your yours about have has had any since from into over than then them they their can could would should will just tell told asked ask last next our out its not but all".split(" ")
+    // Words about the conversation itself, not its subject. The router sometimes fills the topic with them
+    // ("previous questions"), which would demand a topic match that no chat can meet.
+    .concat("conversation chat question previous earlier before discus discussed discussion talk talked said say remind thing stuff".split(" ")),
 );
 const STRONG = 0.5; // a conversation must score this much on the topic to count as a match
+// When several chats match a topic, list only those within this much of the best. A clear winner isn't padded
+// with weak half-matches; chats that match equally well are all still listed. Chosen from the eval set.
+export const NEAR_BEST = 0.3;
 
 // Cosine similarity from gemini-embedding-001 (768 dims, query vs document) is mapped onto the same 0..1
 // scale as keyword overlap. Measured on real chats: the same topic in other words scores 0.65-0.68,
@@ -53,8 +59,9 @@ export const semanticScore = (cos: number) => Math.min(1, Math.max(0, (cos - SEM
 function tokens(text: string): Set<string> {
   const out = new Set<string>();
   for (const w of text.toLowerCase().split(/[^a-z0-9]+/)) {
-    if (w.length < 3 || STOPWORDS.has(w)) continue;
-    out.add(w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w); // crude plural stem, same on both sides
+    const stem = w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w; // crude plural stem, same on both sides
+    if (w.length < 3 || STOPWORDS.has(w) || STOPWORDS.has(stem)) continue; // "questions" is a stop word too
+    out.add(stem);
   }
   return out;
 }
@@ -107,6 +114,7 @@ export function recall(query: RecallQuery, conversations: Conversation[]): Recal
           .filter(({ h }) => h.score >= STRONG)
           .sort((a, b) => b.h.score - a.h.score || b.at.localeCompare(a.at)) // best score first, newest first within a score
           .map(({ h }) => h)
+          .filter((h, _, all) => h.score >= all[0].score - NEAR_BEST)
       : [];
 
   let candidates: DayCandidate[] = [];

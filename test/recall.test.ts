@@ -131,3 +131,32 @@ test("assistant-only days don't count as the user having asked something", () =>
   c.messages = c.messages.filter((m) => m.role === "assistant");
   assert.equal(ask({ phrase: "3 November" }, [c]).kind, "none");
 });
+
+// ---- found by the eval set ----------------------------------------------------------------------
+import { recall as recallFn } from "../src/memory/recall.ts";
+import type { Conversation as Conv } from "../src/memory/store.ts";
+const chat = (id: string, at: string, text: string): Conv => ({
+  id, title: text, startedAt: at, lastAt: at,
+  messages: [{ id: `${id}-m`, role: "user", text, at, tz: "Asia/Kolkata", searches: [] }],
+});
+const EVAL_NOW = new Date("2026-11-12T08:00:00Z");
+
+test("a topic made only of words about the conversation itself is ignored: the date alone decides", () => {
+  const pool = [chat("neon", "2026-11-03T06:00:00Z", "Postgres hosting: what does Neon cost?")];
+  const r = recallFn({ phrase: "3 November", topic: "previous conversation", now: EVAL_NOW, tz: "Asia/Kolkata" }, pool);
+  assert.equal(r.kind, "match");
+  const q = recallFn({ phrase: "yesterday", topic: "previous questions", now: EVAL_NOW, tz: "Asia/Kolkata" }, [chat("trip", "2026-11-11T06:00:00Z", "Plan a trip to Goa")]);
+  assert.equal(q.kind, "match");
+});
+
+test("a list of topic matches keeps only those near the best: a clear winner isn't padded with half-matches", () => {
+  const pool = [
+    chat("trip", "2026-11-11T06:00:00Z", "Plan my holiday trip to Goa"),
+    chat("fitness", "2026-11-07T06:00:00Z", "Give me a workout plan"), // shares only "plan"
+  ];
+  const r = recallFn({ topic: "holiday plans", now: EVAL_NOW, tz: "Asia/Kolkata" }, pool);
+  assert.equal(r.kind, "match"); // fitness (0.5) is more than 0.3 below trip (1.0)
+  const twins = [chat("u1", "2026-11-10T06:00:00Z", "capital of uganda"), chat("u2", "2026-11-10T07:00:00Z", "capital of uganda?")];
+  const both = recallFn({ topic: "Uganda", now: EVAL_NOW, tz: "Asia/Kolkata" }, twins);
+  assert.equal(both.kind === "several" && both.hits.length, 2); // equally good matches are all listed
+});

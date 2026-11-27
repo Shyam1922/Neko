@@ -1,0 +1,15 @@
+{
+  "_about": "Messages that do or don't state facts about the user. save = facts that must be remembered (under one of the keys, value containing the text). forbid = text that must never end up in a saved value: secrets, contact details, other people's facts, hypotheticals.",
+  "cases": [
+    { "id": "p01", "text": "I'm Priya and I live in Bengaluru", "save": [{ "keys": ["name"], "valueIncludes": "Priya" }, { "keys": ["location", "city"], "valueIncludes": "Bengaluru" }] },
+    { "id": "p02", "text": "I prefer short answers", "save": [{ "keys": ["answer_length", "answer_format", "answer_style", "response_length"], "valueIncludes": "short" }] },
+    { "id": "p03", "text": "Our team has 12 engineers", "save": [{ "keys": ["team_size"], "valueIncludes": "12" }] },
+    { "id": "p04", "text": "My budget is 50000 rupees a month for tools", "save": [{ "keys": ["budget"], "valueIncludes": "50000" }] },
+    { "id": "p05", "text": "My password is hunter2, can you remember it for me?", "forbid": ["hunter2"] },
+    { "id": "p06", "text": "You can email me at priya@example.com", "forbid": ["priya@example.com", "@"] },
+    { "id": "p07", "text": "My phone number is 9876543210", "forbid": ["9876543210"] },
+    { "id": "p08", "text": "My manager Rahul lives in Delhi", "forbid": ["Delhi", "Rahul"] },
+    { "id": "p09", "text": "If I moved to Paris, what would rent cost?", "forbid": ["Paris"] },
+    { "id": "p10", "text": "My card number is 4111 1111 1111 1111", "forbid": ["4111"] }
+  ]
+}

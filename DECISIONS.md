@@ -2,6 +2,42 @@
 
 A running log of what was chosen, what else was on the table, and why. Newest first.
 
+## 2026-11-27 · Task 4: evals
+
+**What is measured, and how** (`npm run eval`, scoring in [eval/score.ts](eval/score.ts), fixtures in [eval/fixtures](eval/fixtures)):
+- *Router accuracy*: 12 routing cases plus every memory question (39 messages).
+- *Recall@1*: 27 memory questions against a fixed history of 10 chats. The first conversation shown must be the right one, or the answer must be an honest "no record", or a "which one?" when the question is ambiguous. Run twice on the same router output: keywords only, and hybrid. Recall@3 and "wrong chats also offered" are reported too, because a right answer buried among wrong ones is still a worse experience.
+- *Verdict accuracy*: 6 then-vs-now scenarios, 8 verdicts. Each scenario brings **fixed** search results, so a verdict can't change because the web did.
+- *Grounding*: every quote the model proposes (claims, current values) is checked against its source with code written separately from the app's own check. Reported twice: invented quotes the model *proposed*, and invented quotes that *passed* (must be 0).
+- *Profile*: 10 messages; the right facts saved, and nothing forbidden saved (password, email, phone, card, another person's city, a hypothetical).
+- *Latency*: median and p90 per model call, timed without the pacing waits.
+
+**End to end, not component by component.** The recall suite uses the real router's time phrase and topic, not hand-written ones. A router mistake therefore shows up as a recall miss, which is what a user would see.
+
+**The eval runs the app's code, not a copy.** The then-vs-now step that picks which claims to re-check was moved out of the pipeline into `selectForRecheck()`, so the harness and the app share it.
+
+**Rate limits.** The free tier allows a few requests per minute. The first run had 27 of 47 calls fail on rate limits, so its numbers measured Google's quota, not Neko. The runner now paces calls (`--rpm`, default 12) and waits as long as Google asks on a per-minute limit. A daily-limit error still stops the run. The app itself keeps its 20-second cap, because a person is waiting.
+
+**Tuning without fooling myself.** After the first clean run, 8 held-out memory questions were written *before* changing anything, and scored with the old settings (100%). Two changes followed, both aimed at causes found in the results, not at the scores:
+1. The router sometimes fills the topic with words about the conversation itself ("previous questions"). Recall then demanded a topic match no chat could meet. Those words are now stop-words (including plurals, which the first version missed: a unit test caught it).
+2. When several chats match a topic, only those within 0.3 of the best are listed. This removed weak half-keyword matches ("holiday **plans**" vs "workout **plan**").
+
+Held-out recall stayed at 100% and wrong chats offered fell from 8 to 3. I did **not** lower the similarity threshold to rescue the one remaining miss ("job applications" → the resume chat, cosine 0.600 against a 0.625 bar): that would be fitting the bar to one case. Every "no record" case sat at 0.553–0.555, so the margin is real but thin, and the next step is more data, not a new number.
+
+**Results** (gemini-3.5-flash-lite, 27 Nov 2026):
+
+| Metric | Result |
+| --- | --- |
+| Router accuracy | 100% (39/39) |
+| Recall@1, keywords only | 56% |
+| Recall@1, hybrid | 96% (dev 95%, held-out 100%) |
+| Verdict accuracy | 100% (8/8) |
+| Invented quotes reaching the answer | 0 |
+| Profile facts correct / unsafe saved | 100% (10/10) / 0 |
+| Median model call | about 1.0–1.3 s |
+
+**What the eval doesn't cover yet:** the final written answer (is every number in it from the findings?), the correction ladder ("that's the wrong one"), and real-world phrasing from actual users. The set is small (about 60 judged items), so one case moves recall by 4 points.
+
 ## 2026-11-27 · Task 3: semantic search with embeddings
 
 **pgvector in the existing Postgres, not a vector database.**

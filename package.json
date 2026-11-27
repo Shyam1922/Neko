@@ -13,7 +13,8 @@
     "check:models": "tsx --env-file-if-exists=.env scripts/check-models.ts",
     "ping:model": "tsx --env-file-if-exists=.env scripts/ping-model.ts",
     "import:json": "tsx --env-file-if-exists=.env scripts/import-json.ts",
-    "stats": "tsx --env-file-if-exists=.env scripts/stats.ts"
+    "stats": "tsx --env-file-if-exists=.env scripts/stats.ts",
+    "eval": "tsx --env-file-if-exists=.env eval/run.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.6.0",

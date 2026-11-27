@@ -1,0 +1,17 @@
+{
+  "_about": "Messages and the route they should take. The memory questions in recall.json are added to these automatically (all expect 'memory'). Routes: chat (no lookup), research (needs the live web), memory (an earlier chat), memory_research (an earlier chat AND what changed since).",
+  "cases": [
+    { "id": "c01", "text": "What is the capital of France?", "expected": "chat" },
+    { "id": "c02", "text": "Write a haiku about monsoon rain", "expected": "chat" },
+    { "id": "c03", "text": "hi! how are you doing?", "expected": "chat" },
+    { "id": "c04", "text": "Explain what a hash map is, simply", "expected": "chat" },
+    { "id": "s01", "text": "What does Supabase charge for its Pro plan right now?", "expected": "research" },
+    { "id": "s02", "text": "Who won the most recent Formula 1 race?", "expected": "research" },
+    { "id": "s03", "text": "What's the current price of Bitcoin?", "expected": "research" },
+    { "id": "s04", "text": "What are the latest Gemini models Google has released?", "expected": "research" },
+    { "id": "d01", "text": "Has Neon's pricing changed since I asked you on 3 November?", "expected": "memory_research" },
+    { "id": "d02", "text": "Is the gold price still what you told me on Tuesday?", "expected": "memory_research" },
+    { "id": "d03", "text": "Are the CRM prices you gave me on 2 November still correct?", "expected": "memory_research" },
+    { "id": "d04", "text": "Has Vercel Pro gone up since we last talked about it?", "expected": "memory_research" }
+  ]
+}
