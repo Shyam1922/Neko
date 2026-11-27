@@ -165,7 +165,8 @@ export class ConversationStore {
 
   // Appends a message, creating the conversation when conversationId is undefined.
   // One transaction: the message and the conversation's lastAt change together or not at all. The row lock
-  // (FOR UPDATE) makes concurrent appends to one chat wait their turn instead of interleaving.
+  // makes concurrent appends to one chat wait their turn instead of interleaving. NO KEY UPDATE, because only
+  // last_at changes: it still serialises appends, but doesn't block foreign-key checks from other inserts.
   async append(
     conversationId: string | undefined,
     m: { role: Message["role"]; text: string; tz?: string; searches?: SearchLog[]; recall?: RecallMeta; ms?: number },
@@ -185,7 +186,7 @@ export class ConversationStore {
     const convId = await this.db.tx(async (q: Queryable) => {
       let id = conversationId;
       if (id) {
-        const found = await q.query("SELECT id FROM conversations WHERE id = $1 AND user_id = $2 FOR UPDATE", [id, this.userId]);
+        const found = await q.query("SELECT id FROM conversations WHERE id = $1 AND user_id = $2 FOR NO KEY UPDATE", [id, this.userId]);
         if (!found.rows.length) throw new Error("Conversation not found");
         await q.query("UPDATE conversations SET last_at = $2 WHERE id = $1", [id, at]);
       } else {

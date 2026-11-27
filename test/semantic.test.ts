@@ -186,3 +186,20 @@ test("pipeline: if the embedding model is down, recall falls back to keywords an
   assert.equal(mode && mode.type === "recall_mode" && mode.mode, "keywords");
   assert.match(events.flatMap((e) => (e.type === "token" ? [e.text] : [])).join(""), /no record/i); // keywords alone can't find it, and says so honestly
 });
+
+test("a chat deleted while its batch is being embedded is skipped; the rest of the batch is still stored", async () => {
+  const { db, store, embedder, index, user } = await setup();
+  const doomed = await store.append(undefined, { role: "user", text: "Which notebook should I buy?" });
+  const kept = await store.append(undefined, { role: "user", text: "gold price today?" });
+  const real = embedder.embed.bind(embedder);
+  embedder.embed = async (texts, kind) => {
+    await store.remove(doomed.conversation.id); // the user deletes it mid-batch
+    return real(texts, kind);
+  };
+  await index.indexPending(); // must not throw
+  const sims = await index.similar(user, "gold");
+  assert.ok(sims.has(kept.conversation.id));
+  assert.equal(sims.has(doomed.conversation.id), false);
+  const { rows } = await db.query("SELECT count(*)::int AS n FROM message_embeddings WHERE conversation_id = $1", [doomed.conversation.id]);
+  assert.equal(rows[0].n, 0);
+});

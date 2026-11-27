@@ -24,8 +24,8 @@ const DAY = 24 * HOUR;
 export async function turnLimitReason(db: Db, userId: string, now: Date, limits: Limits): Promise<string | null> {
   if (limits.turnsPerHour > 0) {
     const { rows } = await db.query<{ n: number; oldest: Date | null }>(
-      "SELECT count(*)::int AS n, min(at) AS oldest FROM messages WHERE user_id = $1 AND role = 'user' AND at > $2",
-      [userId, new Date(now.getTime() - HOUR).toISOString()],
+      "SELECT count(*)::int AS n, min(at) AS oldest FROM messages WHERE user_id = $1 AND role = 'user' AND at > $2 AND at <= $3",
+      [userId, new Date(now.getTime() - HOUR).toISOString(), now.toISOString()],
     );
     if (rows[0].n >= limits.turnsPerHour) {
       // The window frees up when the oldest message in it turns an hour old.
@@ -36,8 +36,8 @@ export async function turnLimitReason(db: Db, userId: string, now: Date, limits:
   }
   if (limits.turnsPerDay > 0) {
     const { rows } = await db.query<{ n: number }>(
-      "SELECT count(*)::int AS n FROM messages WHERE role = 'user' AND at > $1",
-      [new Date(now.getTime() - DAY).toISOString()],
+      "SELECT count(*)::int AS n FROM messages WHERE role = 'user' AND at > $1 AND at <= $2",
+      [new Date(now.getTime() - DAY).toISOString(), now.toISOString()],
     );
     if (rows[0].n >= limits.turnsPerDay) {
       return "Neko has used up its free model quota for today. Please try again tomorrow.";

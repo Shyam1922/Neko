@@ -27,6 +27,13 @@ A running log of what was chosen, what else was on the table, and why. Newest fi
 
 **Model choice.** `gemini-embedding-001` at 768 dimensions (it supports smaller outputs than its default 3,072; 768 keeps rows small and is well within pgvector's limits). `gemini-embedding-2` was tried, but returned one vector for a whole batch through this SDK. The model is configurable with `EMBED_MODEL`, and each vector records the model that made it, so a later switch can re-embed.
 
+**Concurrency bugs found by running the tests on real Postgres** (several test processes share one database, so they behave like simultaneous users):
+- *Delete during embedding broke a foreign key.* The indexer checked "does this message still exist?" and then inserted its vector; a delete could commit in between. Fix: lock the rows that still exist (`FOR KEY SHARE`) and skip the rest. A delete then waits for the batch to commit.
+- *Deadlock between delete and the indexer.* A delete locks the conversation, then its messages; the indexer locked messages first, then (through its foreign-key check) the conversation. Postgres detected the cycle and killed one side, sometimes the user's delete. Fix: the indexer locks in the same order, conversations then messages, sorted by id. Rule to remember: everyone takes locks in the same order.
+- `append` now takes `FOR NO KEY UPDATE` rather than `FOR UPDATE`: it only changes `last_at`, so it still queues concurrent appends but no longer blocks other transactions' foreign-key checks.
+- The rate-limit window gained an upper bound (`at <= now`). Production has no future-dated messages, but "the last 24 hours" should mean exactly that.
+- Verified with 10 consecutive full runs against Postgres 17 + pgvector 0.8.7.
+
 **Before/after on real data** (the 9 imported chats; topics phrased in other words): keywords alone found nothing for "East Africa", "precious metals" and "answer style preferences"; hybrid found the right chats for all three, and still found nothing for an unrelated topic ("cooking recipes"). Formal recall@1 numbers come with Task 4.
 
 ## 2026-11-26 · Task 2: deploy, limits, logging

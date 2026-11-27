@@ -63,13 +63,20 @@ export class SemanticIndex {
       if (!rows.length) break;
       const vectors = await this.embedder.embed(rows.map((r) => r.text), "document");
       await this.db.tx(async (q) => {
+        // The user may delete a chat while its messages are being embedded. Lock what still exists (KEY SHARE:
+        // a delete now waits for this commit) and skip the rest. A plain "does it exist?" check isn't enough:
+        // the delete can commit between the check and the insert and break the foreign key.
+        // Lock order matters: a delete locks the conversation, then its messages. Taking them in any other
+        // order deadlocks with it, and Postgres then kills one side, sometimes the user's delete.
+        await q.query("SELECT id FROM conversations WHERE id = ANY($1::text[]) ORDER BY id FOR KEY SHARE", [[...new Set(rows.map((r) => r.conversation_id))]]);
+        const alive = await q.query<{ id: string }>("SELECT id FROM messages WHERE id = ANY($1::text[]) ORDER BY id FOR KEY SHARE", [rows.map((r) => r.id)]);
+        const keep = new Set(alive.rows.map((r) => r.id));
         for (const [i, r] of rows.entries()) {
-          // ON CONFLICT: another instance may have embedded it meanwhile. A message deleted meanwhile fails the
-          // foreign key, so insert only if it still exists.
+          if (!keep.has(r.id)) continue;
           await q.query(
             `INSERT INTO message_embeddings (message_id, conversation_id, user_id, model, embedding)
-             SELECT $1, $2, $3, $4, $5::vector WHERE EXISTS (SELECT 1 FROM messages WHERE id = $1)
-             ON CONFLICT (message_id) DO NOTHING`,
+             VALUES ($1, $2, $3, $4, $5::vector)
+             ON CONFLICT (message_id) DO NOTHING`, // another instance may have embedded it meanwhile
             [r.id, r.conversation_id, r.user_id, this.embedder.model, toVector(vectors[i])],
           );
         }

@@ -41,14 +41,20 @@ test("assistant replies don't count as turns", async () => {
 });
 
 test("daily limit counts everyone's messages", async () => {
+  // A day of its own, far from every other test's clock and different on every run: on a shared real
+  // database, other test files (and earlier runs) leave messages behind, and the global count must not see them.
   const db = await testDb();
-  const { rows } = await db.query("SELECT count(*)::int AS n FROM messages WHERE role = 'user' AND at > $1", [minutesAgo(24 * 60).toISOString()]);
-  const already = rows[0].n; // other tests in this file share the database
+  const day = new Date(Date.UTC(2100, 0, 1) + Math.floor(Math.random() * 100_000) * 86_400_000);
+  const at = (m: number) => new Date(day.getTime() - m * 60_000);
   const a = await newUser();
-  await sent(a, 2, 30);
-  const limits = { ...NO_LIMITS, turnsPerDay: already + 2 };
-  assert.match((await turnLimitReason(db, await newUser(), NOW, limits))!, /quota for today/);
-  assert.equal(await turnLimitReason(db, a, NOW, { ...limits, turnsPerDay: already + 3 }), null);
+  let i = 0;
+  const store = new ConversationStore(db, a, () => at(30 - i++));
+  const { conversation } = await store.append(undefined, { role: "user", text: "q" });
+  await store.append(conversation.id, { role: "user", text: "q" });
+  const limits = { ...NO_LIMITS, turnsPerDay: 2 };
+  assert.match((await turnLimitReason(db, await newUser(), day, limits))!, /quota for today/);
+  assert.equal(await turnLimitReason(db, a, day, { ...limits, turnsPerDay: 3 }), null);
+  assert.equal(await turnLimitReason(db, a, new Date(day.getTime() + 25 * 3600_000), limits), null); // a day later the window is empty
 });
 
 test("sliding window: allows max hits per window, then frees up as old hits expire", () => {
