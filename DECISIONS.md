@@ -49,6 +49,8 @@ Held-out recall stayed at 100% and wrong chats offered fell from 8 to 3. I did *
 | Profile facts correct / unsafe saved | 100% (10/10) / 0 |
 | Median model call | about 1.0–1.3 s |
 
+**Second model: gemini-3.5-flash, no valid score.** The full run (27 Nov) had 50 of 55 calls fail with 503 "high demand"; the 5 successful calls took a median of 93 s and a p90 of 216 s. Its scorecard (10% router accuracy and so on) measures availability, not quality, so it isn't reported as accuracy. The runner now flags any run with over 10% failed calls as INVALID. The honest conclusion: on a free key, flash is too slow and too often unavailable for a chat that should answer in seconds. A quality comparison needs a paid key or a quieter hour.
+
 **What the eval doesn't cover yet:** the final written answer (is every number in it from the findings?), the correction ladder ("that's the wrong one"), and real-world phrasing from actual users. The set is small (about 60 judged items), so one case moves recall by 4 points.
 
 ## 2026-11-27 · Task 3: semantic search with embeddings

@@ -312,6 +312,11 @@ report.modelErrors = errors.map((e) => ({ kind: e.kind, error: e.error }));
 const sec = (ms: number) => (Number.isNaN(ms) ? "n/a" : `${(ms / 1000).toFixed(1)}s`);
 card.push(["Median latency per model call", (["route", "claims", "compare"] as const).filter((k) => latency[k].n).map((k) => `${k} ${sec(latency[k].median)} (p90 ${sec(latency[k].p90)})`).join(", ")]);
 card.push(["Model calls / errors", `${llm.calls.length} / ${errors.length}`]);
+// A run where the model mostly failed (overload, quota) scores the provider's availability, not the model's
+// quality. Say so on the card and in the saved results, so nobody quotes its numbers as accuracy.
+const errorRate = llm.calls.length ? errors.length / llm.calls.length : 0;
+report.valid = errorRate <= 0.1;
+if (!report.valid) card.unshift(["INVALID RUN", `${Math.round(errorRate * 100)}% of model calls failed: the scores below measure availability, not quality`]);
 
 const outDir = path.join(dir, "results");
 await mkdir(outDir, { recursive: true });

@@ -1,0 +1,1388 @@
+{
+  "model": "gemini-3.5-flash",
+  "ranAt": "2026-11-27T16:11:24.771Z",
+  "suites": [
+    "router",
+    "recall",
+    "profile",
+    "diff"
+  ],
+  "router": {
+    "accuracy": 0.10256410256410256,
+    "confusion": {
+      "labels": [
+        "chat",
+        "research",
+        "memory",
+        "memory_research"
+      ],
+      "matrix": [
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          2,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          2
+        ]
+      ]
+    },
+    "cases": [
+      {
+        "id": "c01",
+        "text": "What is the capital of France?",
+        "expected": "chat",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "c02",
+        "text": "Write a haiku about monsoon rain",
+        "expected": "chat",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "c03",
+        "text": "hi! how are you doing?",
+        "expected": "chat",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "c04",
+        "text": "Explain what a hash map is, simply",
+        "expected": "chat",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "s01",
+        "text": "What does Supabase charge for its Pro plan right now?",
+        "expected": "research",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "s02",
+        "text": "Who won the most recent Formula 1 race?",
+        "expected": "research",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "s03",
+        "text": "What's the current price of Bitcoin?",
+        "expected": "research",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "s04",
+        "text": "What are the latest Gemini models Google has released?",
+        "expected": "research",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "d01",
+        "text": "Has Neon's pricing changed since I asked you on 3 November?",
+        "expected": "memory_research",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "d02",
+        "text": "Is the gold price still what you told me on Tuesday?",
+        "expected": "memory_research",
+        "got": "memory_research",
+        "correct": true,
+        "timePhrase": "Tuesday",
+        "topic": "gold price"
+      },
+      {
+        "id": "d03",
+        "text": "Are the CRM prices you gave me on 2 November still correct?",
+        "expected": "memory_research",
+        "got": "memory_research",
+        "correct": true,
+        "timePhrase": "2 November",
+        "topic": "CRM prices"
+      },
+      {
+        "id": "d04",
+        "text": "Has Vercel Pro gone up since we last talked about it?",
+        "expected": "memory_research",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r01",
+        "text": "What did I ask you yesterday?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "timePhrase": "yesterday"
+      },
+      {
+        "id": "r02",
+        "text": "What did we talk about on 3 November?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r03",
+        "text": "Last Tuesday I asked you about gold. What did you tell me?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r04",
+        "text": "What did I ask about Uganda on Tuesday?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r05",
+        "text": "What did I ask you on Tuesday?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r06",
+        "text": "On Monday I asked about laptops, what did you suggest?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r07",
+        "text": "What did I ask you about Python?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r08",
+        "text": "What did you say about Vercel pricing?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r09",
+        "text": "What did we discuss about laptops?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r10",
+        "text": "Did we ever talk about East Africa?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r11",
+        "text": "What did you tell me about precious metals?",
+        "expected": "memory",
+        "got": "memory",
+        "correct": true,
+        "topic": "precious metals"
+      },
+      {
+        "id": "r12",
+        "text": "Remind me what we said about my holiday plans",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r13",
+        "text": "What did I ask about exercise?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r14",
+        "text": "What advice did you give me about job applications?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r15",
+        "text": "What did we discuss about frontend hosting costs?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r16",
+        "text": "What did you say about sales software for my team?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r17",
+        "text": "Did we ever talk about cooking recipes?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r18",
+        "text": "What did I ask about Kubernetes last Wednesday?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "r19",
+        "text": "What did I ask you about on 8 November?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "h01",
+        "text": "What did we say about cloud database pricing?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "h02",
+        "text": "What did you suggest for staying fit?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "h03",
+        "text": "What did we discuss about African capitals?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "h04",
+        "text": "What did you tell me about beach vacations?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "h05",
+        "text": "Did we ever talk about gardening?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "h06",
+        "text": "What did you say about CV tips?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "h07",
+        "text": "What did I ask about the cost of a new computer?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      },
+      {
+        "id": "h08",
+        "text": "Did we ever discuss the weather forecast?",
+        "expected": "memory",
+        "got": "error",
+        "correct": false
+      }
+    ]
+  },
+  "recall": {
+    "keywords": {
+      "n": 27,
+      "at1": 0.037037037037037035,
+      "at3": 0.037037037037037035,
+      "extra": 0
+    },
+    "hybrid": {
+      "n": 27,
+      "at1": 0.07407407407407407,
+      "at3": 0.07407407407407407,
+      "extra": 0
+    },
+    "bySplit": {
+      "dev": {
+        "keywords": {
+          "n": 19,
+          "at1": 0.05263157894736842,
+          "at3": 0.05263157894736842,
+          "extra": 0
+        },
+        "hybrid": {
+          "n": 19,
+          "at1": 0.10526315789473684,
+          "at3": 0.10526315789473684,
+          "extra": 0
+        }
+      },
+      "holdout": {
+        "keywords": {
+          "n": 8,
+          "at1": 0,
+          "at3": 0,
+          "extra": 0
+        },
+        "hybrid": {
+          "n": 8,
+          "at1": 0,
+          "at3": 0,
+          "extra": 0
+        }
+      }
+    },
+    "embedQueryMs": {
+      "median": 764,
+      "p90": 764
+    },
+    "cases": [
+      {
+        "id": "r01",
+        "split": "dev",
+        "text": "What did I ask you yesterday?",
+        "expected": "trip",
+        "needs": "date",
+        "phrase": "yesterday",
+        "keywords": {
+          "first": "trip",
+          "offered": [
+            "trip"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "trip",
+              "score": 0
+            }
+          ]
+        },
+        "hybrid": {
+          "first": "trip",
+          "offered": [
+            "trip"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "trip",
+              "score": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "r02",
+        "split": "dev",
+        "text": "What did we talk about on 3 November?",
+        "expected": "neon",
+        "needs": "date",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r03",
+        "split": "dev",
+        "text": "Last Tuesday I asked you about gold. What did you tell me?",
+        "expected": "gold",
+        "needs": "date+keywords",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r04",
+        "split": "dev",
+        "text": "What did I ask about Uganda on Tuesday?",
+        "expected": "uganda",
+        "needs": "date+keywords",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r05",
+        "split": "dev",
+        "text": "What did I ask you on Tuesday?",
+        "expected": "ask",
+        "needs": "date",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r06",
+        "split": "dev",
+        "text": "On Monday I asked about laptops, what did you suggest?",
+        "expected": "laptop",
+        "needs": "date+meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r07",
+        "split": "dev",
+        "text": "What did I ask you about Python?",
+        "expected": "python",
+        "needs": "keywords",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r08",
+        "split": "dev",
+        "text": "What did you say about Vercel pricing?",
+        "expected": "vercel",
+        "needs": "keywords",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r09",
+        "split": "dev",
+        "text": "What did we discuss about laptops?",
+        "expected": "laptop",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r10",
+        "split": "dev",
+        "text": "Did we ever talk about East Africa?",
+        "expected": "uganda",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r11",
+        "split": "dev",
+        "text": "What did you tell me about precious metals?",
+        "expected": "gold",
+        "needs": "meaning",
+        "topic": "precious metals",
+        "keywords": {
+          "first": "none",
+          "offered": [],
+          "kind": "none",
+          "scored": []
+        },
+        "hybrid": {
+          "first": "gold",
+          "offered": [
+            "gold"
+          ],
+          "kind": "match",
+          "scored": [
+            {
+              "key": "gold",
+              "score": 0.86,
+              "via": "meaning"
+            }
+          ],
+          "cosines": {
+            "python": 0.547,
+            "fitness": 0.536,
+            "trip": 0.534,
+            "gold": 0.679,
+            "laptop": 0.543,
+            "neon": 0.533,
+            "resume": 0.513,
+            "uganda": 0.523,
+            "vercel": 0.528,
+            "crm": 0.526
+          }
+        }
+      },
+      {
+        "id": "r12",
+        "split": "dev",
+        "text": "Remind me what we said about my holiday plans",
+        "expected": "trip",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r13",
+        "split": "dev",
+        "text": "What did I ask about exercise?",
+        "expected": "fitness",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r14",
+        "split": "dev",
+        "text": "What advice did you give me about job applications?",
+        "expected": "resume",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r15",
+        "split": "dev",
+        "text": "What did we discuss about frontend hosting costs?",
+        "expected": "vercel",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r16",
+        "split": "dev",
+        "text": "What did you say about sales software for my team?",
+        "expected": "crm",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r17",
+        "split": "dev",
+        "text": "Did we ever talk about cooking recipes?",
+        "expected": "none",
+        "needs": "none",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r18",
+        "split": "dev",
+        "text": "What did I ask about Kubernetes last Wednesday?",
+        "expected": "none",
+        "needs": "none",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "r19",
+        "split": "dev",
+        "text": "What did I ask you about on 8 November?",
+        "expected": "none",
+        "needs": "none",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "h01",
+        "split": "holdout",
+        "text": "What did we say about cloud database pricing?",
+        "expected": "neon",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "h02",
+        "split": "holdout",
+        "text": "What did you suggest for staying fit?",
+        "expected": "fitness",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "h03",
+        "split": "holdout",
+        "text": "What did we discuss about African capitals?",
+        "expected": "uganda",
+        "needs": "keywords+meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "h04",
+        "split": "holdout",
+        "text": "What did you tell me about beach vacations?",
+        "expected": "trip",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "h05",
+        "split": "holdout",
+        "text": "Did we ever talk about gardening?",
+        "expected": "none",
+        "needs": "none",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "h06",
+        "split": "holdout",
+        "text": "What did you say about CV tips?",
+        "expected": "resume",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "h07",
+        "split": "holdout",
+        "text": "What did I ask about the cost of a new computer?",
+        "expected": "laptop",
+        "needs": "meaning",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      },
+      {
+        "id": "h08",
+        "split": "holdout",
+        "text": "Did we ever discuss the weather forecast?",
+        "expected": "none",
+        "needs": "none",
+        "keywords": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        },
+        "hybrid": {
+          "first": "not-routed",
+          "offered": [],
+          "kind": "not-routed"
+        }
+      }
+    ]
+  },
+  "profile": {
+    "accuracy": 0.7,
+    "unsafeSaved": 0,
+    "proposedUnsafe": 0,
+    "cases": [
+      {
+        "id": "p01",
+        "text": "I'm Priya and I live in Bengaluru",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": false,
+        "missing": [
+          "name~Priya",
+          "location~Bengaluru"
+        ],
+        "unsafe": []
+      },
+      {
+        "id": "p02",
+        "text": "I prefer short answers",
+        "proposed": [
+          {
+            "key": "answer_length",
+            "value": "short answers",
+            "quote": "I prefer short answers"
+          }
+        ],
+        "saved": [
+          {
+            "key": "answer_length",
+            "value": "short answers",
+            "quote": "I prefer short answers"
+          }
+        ],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p03",
+        "text": "Our team has 12 engineers",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": false,
+        "missing": [
+          "team_size~12"
+        ],
+        "unsafe": []
+      },
+      {
+        "id": "p04",
+        "text": "My budget is 50000 rupees a month for tools",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": false,
+        "missing": [
+          "budget~50000"
+        ],
+        "unsafe": []
+      },
+      {
+        "id": "p05",
+        "text": "My password is hunter2, can you remember it for me?",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p06",
+        "text": "You can email me at priya@example.com",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p07",
+        "text": "My phone number is 9876543210",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p08",
+        "text": "My manager Rahul lives in Delhi",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p09",
+        "text": "If I moved to Paris, what would rent cost?",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      },
+      {
+        "id": "p10",
+        "text": "My card number is 4111 1111 1111 1111",
+        "proposed": [],
+        "saved": [],
+        "unsafeProposals": [],
+        "ok": true,
+        "missing": [],
+        "unsafe": []
+      }
+    ]
+  },
+  "diff": {
+    "verdictAccuracy": 0,
+    "confusion": {
+      "labels": [
+        "changed",
+        "unchanged",
+        "couldnt_verify",
+        "no_baseline",
+        "missing",
+        "error"
+      ],
+      "matrix": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          3
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          2
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          2
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "hallucinatedProposed": [],
+    "hallucinatedPassed": [],
+    "scenarios": [
+      {
+        "id": "v01",
+        "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55406s. This may be a daily quota, or a model with no free quota ",
+        "items": [],
+        "expected": [
+          {
+            "entity": "Neon",
+            "attribute": "price",
+            "verdict": "unchanged",
+            "got": "error",
+            "correct": false
+          },
+          {
+            "entity": "Supabase",
+            "verdict": "no_baseline",
+            "got": "error",
+            "correct": false
+          }
+        ]
+      },
+      {
+        "id": "v02",
+        "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55398s. This may be a daily quota, or a model with no free quota ",
+        "items": [],
+        "expected": [
+          {
+            "entity": "Vercel",
+            "attribute": "price",
+            "verdict": "changed",
+            "got": "error",
+            "correct": false
+          }
+        ]
+      },
+      {
+        "id": "v03",
+        "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55391s. This may be a daily quota, or a model with no free quota ",
+        "items": [],
+        "expected": [
+          {
+            "entity": "HubSpot",
+            "attribute": "price",
+            "verdict": "changed",
+            "got": "error",
+            "correct": false
+          },
+          {
+            "entity": "Pipedrive",
+            "attribute": "price",
+            "verdict": "couldnt_verify",
+            "got": "error",
+            "correct": false
+          }
+        ]
+      },
+      {
+        "id": "v04",
+        "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55383s. This may be a daily quota, or a model with no free quota ",
+        "items": [],
+        "expected": [
+          {
+            "entity": "Gold",
+            "attribute": "price",
+            "verdict": "couldnt_verify",
+            "got": "error",
+            "correct": false
+          }
+        ]
+      },
+      {
+        "id": "v05",
+        "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55376s. This may be a daily quota, or a model with no free quota ",
+        "items": [],
+        "expected": [
+          {
+            "entity": "Railway",
+            "attribute": "price",
+            "verdict": "unchanged",
+            "got": "error",
+            "correct": false
+          }
+        ]
+      },
+      {
+        "id": "v06",
+        "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55368s. This may be a daily quota, or a model with no free quota ",
+        "items": [],
+        "expected": [
+          {
+            "entity": "Notion",
+            "attribute": "price",
+            "verdict": "changed",
+            "got": "error",
+            "correct": false
+          }
+        ]
+      }
+    ]
+  },
+  "latency": {
+    "route": {
+      "n": 5,
+      "median": 93358,
+      "p90": 216026
+    },
+    "claims": {
+      "n": 0,
+      "median": null,
+      "p90": null
+    },
+    "compare": {
+      "n": 0,
+      "median": null,
+      "p90": null
+    }
+  },
+  "modelErrors": [
+    {
+      "kind": "route",
+      "error": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
+    },
+    {
+      "kind": "route",
+      "error": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
+    },
+    {
+      "kind": "route",
+      "error": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
+    },
+    {
+      "kind": "route",
+      "error": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
+    },
+    {
+      "kind": "route",
+      "error": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
+    },
+    {
+      "kind": "route",
+      "error": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
+    },
+    {
+      "kind": "route",
+      "error": "Timed out after 240s waiting for the model's structured reply."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 56274s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 56267s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 56114s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55890s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55882s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55874s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55867s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55860s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55852s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55844s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55837s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55830s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55613s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55606s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55598s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55591s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55583s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55576s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55568s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55561s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55553s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55546s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55538s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55531s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55523s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55516s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55508s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55500s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55493s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55466s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55458s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55451s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55443s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55436s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55428s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55421s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "route",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55413s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "claims",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55406s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "claims",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55398s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "claims",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55391s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "claims",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55383s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "claims",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55376s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    },
+    {
+      "kind": "claims",
+      "error": "The model's rate limit was hit for gemini-3.6-flash (GenerateRequestsPerDayPerProjectPerModel-FreeTier). Google says to retry in about 55368s. This may be a daily quota, or a model with no free quota on your key; check your limits at ai.dev/rate-limit."
+    }
+  ],
+  "valid": false,
+  "note": "Invalid run: 50 of 55 model calls failed with 503 'high demand'. Scores measure availability, not quality."
+}

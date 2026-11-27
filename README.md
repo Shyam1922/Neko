@@ -33,6 +33,8 @@
 | Profile facts | right facts saved; passwords, emails, phones, cards, others' facts never saved | 100%, 0 unsafe |
 | Median model call | router, claim extraction, comparison | 1.0–1.3 s |
 
+**A second model.** `gemini-3.5-flash` couldn't be scored on a free key: 50 of its 55 calls failed with Google's "high demand" error, and the 5 that succeeded took a median of 93 seconds per call (flash-lite: 1.0 s). The runner marks such a run invalid rather than reporting its numbers as accuracy; the raw result is in [eval/results](eval/results). For an interactive agent on a free key, flash-lite is the only usable choice measured so far.
+
 Embeddings take recall from 56% to 96%: most of the gain is questions worded differently from the chat ("East Africa" for a Uganda chat). Thresholds were tuned on a dev split and checked on 8 held-out questions written before tuning; how, and what was deliberately *not* tuned, is in [DECISIONS.md](DECISIONS.md). Every case and call is saved in [eval/results](eval/results).
 
 ```bash
