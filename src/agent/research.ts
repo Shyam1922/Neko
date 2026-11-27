@@ -49,6 +49,7 @@ export interface TurnInput {
 const EXCERPT_CHARS = 1200;
 const MAX_HITS = 5;
 const MAX_QUERIES = 3;
+const MAX_RETRIES = 2; // extra rounds for malformed tool calls: a slip can be corrected, but the loop stays bounded
 
 function forModel(hits: SearchHit[], retrievedAt: string) {
   return {
@@ -70,8 +71,9 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<TurnEvent> {
   const history = [...input.history];
   let searches = 0;
 
+  let malformed = 0; // a refused tool call earns one retry round, up to MAX_RETRIES
   // +2 leaves room for the final answer call and one stray tool request.
-  for (let round = 0; round < max + 2; round++) {
+  for (let round = 0; round < max + 2 + Math.min(malformed, MAX_RETRIES); round++) {
     const tools = searches < max ? [SEARCH_TOOL] : undefined;
     const calls: ToolCall[] = [];
     let said = "";
@@ -95,15 +97,19 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<TurnEvent> {
       } else if (searches >= max) {
         result = { error: "Search limit reached for this turn. Answer with what you already have and say what you could not verify." };
       } else {
-        searches++;
         const objective = typeof call.args.objective === "string" ? call.args.objective.trim() : "";
         const queries = (Array.isArray(call.args.search_queries) ? call.args.search_queries : [])
           .filter((q): q is string => typeof q === "string" && q.trim() !== "")
           .map((q) => q.trim().slice(0, 120))
           .slice(0, MAX_QUERIES);
         if (!objective || queries.length === 0) {
-          result = { error: "web_search needs an objective and at least one search query." };
+          malformed++;
+          // Refused, not repaired (no guessing which field meant what), and NOT counted as a search: models
+          // sometimes send "queries" instead of "search_queries", and two such slips used to spend the whole
+          // budget without one real search. The round cap above still bounds retries.
+          result = { error: 'Not run. web_search needs "objective" (one sentence) and "search_queries" (a list of 1-3 short strings), with exactly those field names. Call it again.' };
         } else {
+          searches++;
           yield { type: "searching", queries };
           const retrievedAt = now().toISOString();
           const log: SearchLog = { query: queries.join(" | "), urls: [], retrievedAt };

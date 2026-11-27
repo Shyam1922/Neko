@@ -1,16 +1,55 @@
 # Neko
 
-A chat agent that **remembers your past conversations, checks the live web, and tells you what changed since** — and says so plainly when it can't compare, instead of guessing.
+**A chat agent that remembers your past conversations, re-checks them against the live web, and tells you what changed, without ever inventing a past it can't prove.**
 
-**Try it live: <https://neko-qt6g.onrender.com>** (no sign-up; the first load can take a minute while the free server wakes up).
+**Live demo: <https://neko-qt6g.onrender.com>** · no sign-up · the first load can take a minute while the free server wakes up
 
-Most chatbots can search the web, but they can't connect *"what you asked me last Tuesday"* to *"what's true today"*. Neko can:
+![Neko in use: asking what changed since an earlier chat, with verdict badges and sources](docs/demo.gif)
+
+| | |
+| --- | --- |
+| **Recall** | Finds the past chat you mean by date and by meaning: recall@1 **96%** with embeddings vs **56%** on keywords alone ([evals](#evals)) |
+| **Grounding** | Every baseline and current value is a verbatim quote, checked by code: **0** invented quotes reached an answer in the eval set |
+| **Agent** | One router call with schema-validated JSON picks chat, web research (MCP search tool), memory, or then-vs-now; invalid output is dropped, not repaired |
+| **Memory** | Per-user profile facts the user can see, edit, undo and delete; secrets, contact details and IDs are never stored |
+| **Backend** | TypeScript on Node, Postgres + pgvector (embedded PGlite locally), anonymous multi-user accounts, rate limits, JSON logs |
+| **Shipped** | Docker image, Render deploy from a one-file blueprint, 144 unit tests (also run against real Postgres), `npm run eval` scorecard |
 
 > **You:** Earlier today I asked you about Neon pricing. Has anything changed since then?
 >
 > **Neko:** The monthly base fee, storage rate, and data egress allowance for Neon's Launch plan are unchanged since earlier today (…from a web search), but compute, instant restore, and extra branch rates **could not be verified**.
 
-![Neko landing screen in the light theme: a headline, one input box, a line showing how much it remembers, chat history on the left and your profile top-right](docs/screenshots/landing.jpg)
+## Evals
+
+`npm run eval` runs Neko's real router, recall, personalisation and then-versus-now code with a real model against fixed fixtures ([eval/fixtures](eval/fixtures)), then prints a scorecard. No web search is called: each then-versus-now scenario brings fixed search results, so a verdict can't change because the web did. The scoring rules are in [eval/score.ts](eval/score.ts), unit-tested.
+
+| Metric | What it checks | gemini-3.5-flash-lite |
+| --- | --- | --- |
+| Router accuracy | 39 messages sent down the right path (chat, research, memory, then-vs-now) | 100% |
+| Recall@1, keywords only | 27 memory questions: the right chat first, an honest "no record", or "which one?" when ambiguous | 56% |
+| **Recall@1, hybrid** | the same questions with embeddings added | **96%** (held-out 100%) |
+| Verdict accuracy | 8 Changed / Unchanged / Couldn't verify / No baseline verdicts | 100% |
+| Invented quotes reaching the answer | quotes not literally in their source, after code's checks | **0** |
+| Profile facts | right facts saved; passwords, emails, phones, cards, others' facts never saved | 100%, 0 unsafe |
+| Median model call | router, claim extraction, comparison | 1.0–1.3 s |
+
+Embeddings take recall from 56% to 96%: most of the gain is questions worded differently from the chat ("East Africa" for a Uganda chat). Thresholds were tuned on a dev split and checked on 8 held-out questions written before tuning; how, and what was deliberately *not* tuned, is in [DECISIONS.md](DECISIONS.md). Every case and call is saved in [eval/results](eval/results).
+
+```bash
+npm run eval                                  # the configured model, all suites
+npm run eval -- --model gemini-3.5-flash      # another model
+npm run eval -- --suites router,recall        # some suites only
+```
+
+## Design decisions
+
+The longer reasoning, with the alternatives rejected, is in [DECISIONS.md](DECISIONS.md) and [DESIGN.md](DESIGN.md).
+
+- **Code is the librarian, the model is the reader.** Anything that must be exact is code: resolving "last Tuesday" to dates, finding the conversation, quoting it, deciding Changed / Unchanged. The model classifies, reads old answers into claims, and writes prose. A model can't invent a past if it never gets to supply one.
+- **Drop invalid output, don't repair it.** A route that isn't one of four, a quote that isn't in its source, a profile fact that isn't the user's own words: all discarded. A repaired output is still a guess.
+- **Hybrid recall, dates first.** The date filter always runs first and is never overridden by a vector; then a topic scores the stronger of keyword overlap and embedding similarity. Embeddings rescue paraphrases ("East Africa" → the Uganda chat) without letting "close enough" replace "on the day you said".
+- **One database.** Postgres holds users, chats, profile facts and vectors (pgvector), so deleting a chat deletes its vectors through a foreign key and every query filters by user in plain SQL. Locally and in tests the same SQL runs on embedded PGlite.
+- **Measure before tuning.** Held-out eval questions were written before any threshold changed. One known miss was left in rather than bending the threshold to fit it.
 
 ## What it does
 
@@ -37,6 +76,29 @@ Then-versus-now results show each verdict as a badge (**Changed**, **Unchanged**
 ![A then-versus-now check with verdict badges, in the dark theme](docs/screenshots/then-vs-now.jpg)
 
 The worst failure for an assistant like this is **inventing a past that never happened**, so Neko never does: a baseline must be a verbatim quote from a stored message, and a current value must be a verbatim quote from a real search result. If it can't prove it, it says "no record" or "couldn't verify".
+
+## How it works
+
+```mermaid
+flowchart LR
+  Q[Your message] --> L[Limits + user<br/>code]
+  L --> R[Router<br/>1 model call, JSON]
+  R -->|chat / research| A[Answer<br/>streamed, up to 2 web searches]
+  R -->|memory| M[Recall<br/>dates, then keywords + pgvector]
+  R -->|memory + research| M
+  M -->|one clear match| C[Claims<br/>quotes checked in code]
+  C --> S[Search each product]
+  S --> V[Compare in code<br/>changed / unchanged /<br/>couldn't verify / no baseline]
+  V --> A
+  M -->|several / none| A
+  DB[(Postgres<br/>chats, facts, vectors)] -.-> M
+```
+
+The principle: **code is the librarian, the model is the reader.** The model has no memory, so anything that must be exact is done in code: date arithmetic, finding the right conversation, quoting you verbatim, search limits, provenance, and the verdicts. The model only classifies the message, reads old answers into claims, and writes the final reply. Every model output that gates behaviour is validated, and anything that fails verification is dropped, not repaired.
+
+**Hybrid recall.** Finding "that chat about laptops" runs in a fixed order. First code resolves the date ("last Tuesday" → the days it could mean) and keeps only chats with a message on those days. Then each chat gets a topic score: the stronger of keyword overlap and closeness in meaning. Meaning comes from [pgvector](https://github.com/pgvector/pgvector): every message is embedded in the background after its turn (768-dimension vectors from `gemini-embedding-001`), and a topic is compared against one user's messages by cosine similarity. Embeddings only *find* candidates. The date filter, the quotes and the verdicts stay exact, in code, and if the embedding model is unavailable recall falls back to keywords instead of failing.
+
+A casual chat costs 2 model calls; a then-versus-now check costs 3 (4 the first time). The full reasoning, the options rejected and the known limits are in **[DESIGN.md](DESIGN.md)**.
 
 ## Personalisation
 
@@ -109,28 +171,6 @@ There is no sign-up. The first message you send creates an anonymous account and
 
 In the sidebar, hover a chat to **rename** or **delete** it. Deleting a chat removes its messages; facts it taught Neko stay in your profile until you remove them there.
 
-## Evals
-
-`npm run eval` runs Neko's real router, recall, personalisation and then-versus-now code with a real model against fixed fixtures ([eval/fixtures](eval/fixtures)), then prints a scorecard. No web search is called: each then-versus-now scenario brings fixed search results, so a verdict can't change because the web did. The scoring rules are in [eval/score.ts](eval/score.ts), unit-tested.
-
-| Metric | What it checks | gemini-3.5-flash-lite |
-| --- | --- | --- |
-| Router accuracy | 39 messages sent down the right path (chat, research, memory, then-vs-now) | 100% |
-| Recall@1, keywords only | 27 memory questions: the right chat first, an honest "no record", or "which one?" when ambiguous | 56% |
-| **Recall@1, hybrid** | the same questions with embeddings added | **96%** (held-out 100%) |
-| Verdict accuracy | 8 Changed / Unchanged / Couldn't verify / No baseline verdicts | 100% |
-| Invented quotes reaching the answer | quotes not literally in their source, after code's checks | **0** |
-| Profile facts | right facts saved; passwords, emails, phones, cards, others' facts never saved | 100%, 0 unsafe |
-| Median model call | router, claim extraction, comparison | 1.0–1.3 s |
-
-Embeddings take recall from 56% to 96%: most of the gain is questions worded differently from the chat ("East Africa" for a Uganda chat). Thresholds were tuned on a dev split and checked on 8 held-out questions written before tuning; how, and what was deliberately *not* tuned, is in [DECISIONS.md](DECISIONS.md). Every case and call is saved in [eval/results](eval/results).
-
-```bash
-npm run eval                                  # the configured model, all suites
-npm run eval -- --model gemini-3.5-flash      # another model
-npm run eval -- --suites router,recall        # some suites only
-```
-
 ## Deploy
 
 **Docker, locally.** `docker compose up --build` runs Neko with a Postgres server (with pgvector) on <http://localhost:3000>. It reads your key from `.env`.
@@ -140,27 +180,6 @@ npm run eval -- --suites router,recall        # some suites only
 **Protecting the key.** A public demo spends your Gemini quota, so the limits in the table above are on by default. Someone over a limit gets a plain message saying how long to wait, not an error. Request bodies are capped at 100 KB and messages at 8,000 characters.
 
 **Logs.** Every turn writes one JSON line: route, total and first-token latency, model calls, searches, search errors, and the outcome (`ok`, `error`, `aborted`). Users appear as a short hash, never the cookie id. `npm run stats` turns the database into usage numbers.
-
-## How it works
-
-```mermaid
-flowchart LR
-  Q[Your message] --> R[Router<br/>1 model call]
-  R -->|chat / research| A[Answer<br/>+ web search if needed]
-  R -->|memory| M[Memory lookup<br/>code]
-  R -->|memory + research| M
-  M -->|one clear match| C[Claims + quote checks]
-  C --> S[Search each product]
-  S --> V[Compare in code<br/>changed / unchanged /<br/>couldn't verify / no baseline]
-  V --> A
-  M -->|several / none| A
-```
-
-The principle: **code is the librarian, the model is the reader.** The model has no memory, so anything that must be exact is done in code: date arithmetic, finding the right conversation, quoting you verbatim, search limits, provenance, and the verdicts. The model only classifies the message, reads old answers into claims, and writes the final reply. Every model output that gates behaviour is validated, and anything that fails verification is dropped, not repaired.
-
-**Hybrid recall.** Finding "that chat about laptops" runs in a fixed order. First code resolves the date ("last Tuesday" → the days it could mean) and keeps only chats with a message on those days. Then each chat gets a topic score: the stronger of keyword overlap and closeness in meaning. Meaning comes from [pgvector](https://github.com/pgvector/pgvector): every message is embedded in the background after its turn (768-dimension vectors from `gemini-embedding-001`), and a topic is compared against one user's messages by cosine similarity. Embeddings only *find* candidates. The date filter, the quotes and the verdicts stay exact, in code, and if the embedding model is unavailable recall falls back to keywords instead of failing.
-
-A casual chat costs 2 model calls; a then-versus-now check costs 3 (4 the first time). The full reasoning, the options rejected and the known limits are in **[DESIGN.md](DESIGN.md)**.
 
 ## Project layout
 
@@ -197,7 +216,8 @@ src/
 public/                the chat page: landing, answer cards, verdict badges, history (no build step; light and dark themes)
 scripts/               ping-model, check-models, probe-search, import-json, stats
 Dockerfile, docker-compose.yml, render.yaml    container, local stack, Render blueprint
-test/                  unit tests with fake models and a fake search
+eval/                  eval fixtures, runner and scoring (npm run eval); results per model
+test/                  unit tests with fake models, a fake search and a fake embedder
 ```
 
 ## Limits

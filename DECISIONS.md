@@ -2,6 +2,19 @@
 
 A running log of what was chosen, what else was on the table, and why. Newest first.
 
+## 2026-11-27 · Task 5: README, demo, and a bug the demo found
+
+**The README leads with proof.** A reviewer skims for about 30 seconds, so the first screen holds the pitch, the live link, a 20-second demo GIF, and a table of what was engineered, with numbers that link to how they were measured. Setup and configuration moved down.
+
+**The demo GIF is real.** Recorded from the running app with live model calls and live search, then stitched with captions (Pillow). No mock-ups.
+
+**Bug found while recording: malformed tool calls spent the search budget.** The first take answered "I could not verify… due to search limits" with zero searches run. Printing the model's raw tool calls showed why: about 1 time in 3, `gemini-3.5-flash-lite` names the field `queries` instead of `search_queries`. The loop refused those calls, which is right, but also counted them as searches, so two slips used up the whole budget of 2. The fix keeps "refuse, don't repair" (no guessing that `queries` meant `search_queries`):
+- A refused call no longer counts as a search.
+- The error names the exact fields, so the model can retry correctly.
+- Up to 2 extra rounds are allowed for these retries, so the loop stays bounded.
+
+A regression test reproduces the two-slip case. The evals didn't catch it because they use fixed search results and never run the live tool loop: a gap worth closing next.
+
 ## 2026-11-27 · Task 4: evals
 
 **What is measured, and how** (`npm run eval`, scoring in [eval/score.ts](eval/score.ts), fixtures in [eval/fixtures](eval/fixtures)):

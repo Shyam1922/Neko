@@ -112,8 +112,17 @@ test("bad tool arguments and unknown tools become tool errors, not crashes", asy
   await run(llm, search);
   assert.equal(search.calls.length, 0);
   const results = llm.requests[1].history.filter((t) => t.role === "tool_result") as any[];
-  assert.match(JSON.stringify(results[0].result), /needs an objective/);
+  assert.match(JSON.stringify(results[0].result), /search_queries/); // names the exact fields to use
   assert.match(JSON.stringify(results[1].result), /Unknown tool/);
+});
+
+test("a malformed call ('queries' instead of 'search_queries') doesn't use up the search budget", async () => {
+  // Seen with a real model: two slips like this used to spend both searches without one real search.
+  const slip = call({ objective: "Vercel Pro price", queries: ["vercel pro pricing"] });
+  const llm = new ScriptedLlm([[slip], [slip], [goodCall], [goodCall], [text("done")]]);
+  const search = new FakeSearch();
+  await run(llm, search, 2);
+  assert.equal(search.calls.length, 2); // both real searches still ran after two slips
 });
 
 test("a model that never stops asking for tools ends in an error", async () => {
