@@ -141,3 +141,18 @@ test("text before a tool call is kept in history; parallel calls merge into one 
   ]);
   assert.deepEqual(contents.map((c) => [c.role, c.parts!.length]), [["user", 1], ["model", 3], ["user", 2]]);
 });
+
+test("search results are numbered for the model, and numbering carries on after earlier searches this turn", async () => {
+  const hits: SearchHit[] = [
+    { url: "https://a.com/1", title: "A", publishDate: null, excerpts: ["a"] },
+    { url: "https://b.com/2", title: "B", publishDate: null, excerpts: ["b"] },
+  ];
+  const llm = new ScriptedLlm([[goodCall], [text("ok [3]")]]);
+  const search: Search = { search: async () => hits };
+  const prior = [{ query: "earlier", urls: ["https://old.com/x", "https://a.com/1"], retrievedAt: "2026-11-12T08:00:00Z" }];
+  for await (const _ of runTurn({ llm, search, system: "s", history: [{ role: "user", text: "q" }], sessionId: "s", priorSearches: prior }));
+  const result = (llm.requests[1].history[2] as any).result;
+  // old.com is [1] and a.com was already [2] from the earlier search; b.com is new, so [3].
+  assert.deepEqual(result.results.map((r: any) => [r.url, r.source]), [["https://a.com/1", 2], ["https://b.com/2", 3]]);
+  assert.match(result.note, /\[2\]/); // the model is told how to cite
+});

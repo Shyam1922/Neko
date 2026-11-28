@@ -159,6 +159,13 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
     let routeMs: number | undefined;
     let recallMode: string | undefined;
     let firstTokenMs: number | undefined;
+    let firstProgressMs: number | undefined; // time to the first visible step: what the user waits through blind
+    let writing = false;
+    // Progress the page shows as a step list. Each new step finishes the one before it.
+    const step = (label: string, kind?: "search") => {
+      firstProgressMs ??= Date.now() - started;
+      send("step", kind ? { label, kind } : { label });
+    };
     const counted = countingLlm(llm);
     // One log line per turn, whatever happened: latency, model calls, searches, outcome.
     const turnLog = (outcome: "ok" | "error" | "aborted", extra: Record<string, unknown> = {}) =>
@@ -170,6 +177,7 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
         ms: Date.now() - started,
         routeMs,
         recallMode,
+        firstProgressMs,
         firstTokenMs,
         modelCalls: counted.counter.calls,
         searches: searches.length,
@@ -179,6 +187,7 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
         ...extra,
       });
     try {
+      step("Understanding the question");
       for await (const ev of runAgent({ llm: counted.llm, search, store, profile, semantic }, { conv, tz, now, signal: abort.signal })) {
         if (ev.type === "route") {
           routeName = ev.route;
@@ -188,18 +197,21 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
           if (ev.reason) logEvent("embed_error", { user: userTag(userId), error: ev.reason });
         } else if (ev.type === "token") {
           firstTokenMs ??= Date.now() - started;
+          if (!writing) step("Writing the answer");
+          writing = true;
           reply += ev.text;
           send("token", { text: ev.text });
         } else if (ev.type === "searching") {
-          send("searching", { queries: ev.queries });
-        } else if (ev.type === "status") {
-          send("status", { text: ev.text });
+          step(`Searching: ${ev.queries.join(" · ")}`, "search");
+        } else if (ev.type === "step") {
+          step(ev.label);
         } else if (ev.type === "profile") {
           send("profile", { saved: ev.saved }); // so the page can say what was remembered, with an Undo
         } else if (ev.type === "recall") {
           recall = ev.meta; // remembered on the reply so "that's wrong" knows what to exclude
         } else {
-          searches.push(ev.log); // our own log: this is what "searched" means
+          searches.push(ev.log); // our own log: this is what "searched" means, and what citations are numbered from
+          send("search_done", { log: ev.log }); // the page shows the sources before the answer is written
         }
       }
       if (!reply.trim()) throw new Error("The model returned an empty reply.");

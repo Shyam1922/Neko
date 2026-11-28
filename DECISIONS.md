@@ -2,6 +2,28 @@
 
 A running log of what was chosen, what else was on the table, and why. Newest first.
 
+## 2026-11-28 · UX Phase 2: visible progress, Stop, and citations done by code
+
+The audit timed a researched answer at 39.1 s with the first word at 38.9 s, and the screen showed one line the whole time. NN/g puts the limit of attention near 10 s; Perplexity found people wait longer when they can see progress.
+
+**The wait is now visible.** The server sends a `step` event for each stage it is actually in: understanding the question, checking memory, reading earlier answers, searching (with the queries), comparing then and now, writing. A `search_done` event carries the search log, so the page shows "Found 10 sources: neon.com, …" and the source links before the first word of the answer. A clock runs beside the steps. When the answer is done the list folds to one line, "6 steps · 1 search · 8.4s", that opens on click. The steps come from the server, never from a timer guessing what might be happening. The turn log gains `firstProgressMs` next to `firstTokenMs`; the first step goes out right after the user's message is saved, so it is about 0 ms against 5–8 s to the first word.
+
+**Stop.** A Stop button takes Send's place while a reply streams. It aborts the request; the server already aborts the model call when the connection closes, and logs the turn as `aborted`. What had streamed stays on screen with "Stopped. This partial answer wasn't saved."
+
+**A stopped reply is not saved.** Saving it was the other option. But saved replies are what Neko later quotes as "what I told you", and what the then-vs-now check extracts claims from. A cut-off answer can lose its caveats or half its verdicts, and that would become a wrong baseline. So only finished answers are stored. The question stays in the chat, and on reload it shows "No answer was saved for this question." The next message in that chat works normally.
+
+**Citations are done by code, not by the model.** This follows the project's rule that anything exact is done in code:
+- Every URL the turn's searches returned gets a number, in search order, each page once (`numberSources` in `public/answer.js`). One file serves the server, the page and the tests, so the numbers the model sees are the numbers the page shows.
+- Search results reach the model with their number, and the prompt asks for `[n]` instead of links. The then-vs-now findings carry the number of each current value's source as well.
+- The page turns each `[n]` into a link to that URL from Neko's own search log. A number the log doesn't have is dropped. A markdown link or bare URL to a logged page becomes its number; one to any other page loses its link and keeps its words. A one-word `[SiteName]` with no URL becomes a citation if it names a source, and is dropped otherwise.
+- So the two problems seen while recording the demo are gone. "[SubscriptionGauge]" with no URL no longer shows up as stray text. "Neon Pricing Plans" linked four times becomes the same small "1" four times.
+
+Grounding means any link in an answer points to a page Neko actually searched. The cost: a URL the model knows from training is never clickable, and that is the intent.
+
+**Sources are split in two.** "Sources" are the pages the answer actually cites, numbered as in the text. "Also checked" are the rest of what the searches returned, one per site.
+
+Verified with real model and search calls at 1280 and 375 px, light and dark: a researched question, a then-vs-now question and Stop. axe-core (WCAG 2.2 AA plus best practice) found 0 issues on a pending answer, a finished one with the steps open, a saved chat, the help panel and the landing screen. The first scan flagged citation chips sitting too close together (target size) and one chip's text at under 4.5:1 on its tinted fill. The chips are now outlined and spaced 24 px apart.
+
 ## 2026-11-28 · UX Phase 1: fixes and a first move for new visitors
 
 A UX audit (desktop and phone, measured accessibility, timed turns, a look at Perplexity and ChatGPT) produced a 3-phase roadmap. Phase 1 is the small, must-ship part:

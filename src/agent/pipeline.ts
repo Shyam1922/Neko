@@ -18,6 +18,7 @@ import { compareClaim, noBaseline, resolveCurrent, type CurrentValue, type DiffI
 import { acceptCandidates } from "./personalize.ts";
 import { buildSystemPrompt } from "./prompt.ts";
 import { runTurn, type TurnEvent } from "./research.ts";
+import { numberSources, sourceFor } from "../../public/answer.js";
 import { route, type Route, type RouteDecision } from "./router.ts";
 
 export interface AgentDeps {
@@ -41,7 +42,7 @@ export type SavedFact = { id: string; key: string; value: string; previous?: str
 
 export type AgentEvent =
   | TurnEvent
-  | { type: "status"; text: string }
+  | { type: "step"; label: string } // a visible progress step started (and the one before it finished)
   | { type: "route"; route: string; ms: number } // which path the router chose and how long it took, for the turn log
   | { type: "recall_mode"; mode: "hybrid" | "keywords"; reason?: string } // how topics were matched, for the turn log
   | { type: "recall"; meta: RecallMeta }
@@ -76,7 +77,8 @@ export function transcript(past: Conversation, maxChars = 9000): string {
   return lines.join("\n").slice(0, maxChars);
 }
 
-export function formatDiff(items: DiffItem[], tz: string, omitted = 0): string {
+/** `sourceNo` gives a current value's citation number from the turn's search log, so the model can cite [n]. */
+export function formatDiff(items: DiffItem[], tz: string, omitted = 0, sourceNo: (url: string) => number | undefined = () => undefined): string {
   const label: Record<DiffItem["verdict"], string> = { changed: "CHANGED", unchanged: "UNCHANGED", couldnt_verify: "COULD NOT VERIFY", no_baseline: "NO BASELINE" };
   const q = (x: { plan?: string; seats?: string; billing?: string }) => Object.entries(x).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(", ");
   const lines = items.map((i) => {
@@ -85,7 +87,10 @@ export function formatDiff(items: DiffItem[], tz: string, omitted = 0): string {
       const how = i.baseline.provenance === "searched" ? "from a web search" : "from my own knowledge, not a search";
       out.push(`  earlier (${dayOf(i.baseline.assertedAt, tz)}, ${how}): ${i.baseline.valueText}${q(i.baseline.qualifiers) ? ` [${q(i.baseline.qualifiers)}]` : ""}`);
     }
-    if (i.current) out.push(`  now: ${i.current.valueText} (source ${i.current.url}, published ${i.current.publishDate ?? "date unknown"}) quote: "${i.current.quote}"`);
+    if (i.current) {
+      const n = sourceNo(i.current.url);
+      out.push(`  now: ${i.current.valueText} (source ${n ? `[${n}] ` : ""}${i.current.url}, published ${i.current.publishDate ?? "date unknown"}) quote: "${i.current.quote}"`);
+    }
     if (i.delta) out.push(`  change: ${i.delta.abs > 0 ? "+" : ""}${i.delta.abs}${i.delta.pct !== undefined ? ` (${i.delta.pct > 0 ? "+" : ""}${i.delta.pct}%)` : ""}`);
     if (i.reason) out.push(`  note: ${i.reason}`);
     return out.join("\n");
@@ -99,7 +104,7 @@ const DIFF_RULES = [
   "Start with the bottom line. Use the verdicts exactly as given; never upgrade a 'could not verify' into a guess.",
   "Write each item's verdict as its exact uppercase label (CHANGED, UNCHANGED, COULD NOT VERIFY, NO BASELINE) straight after the item name, e.g. \"- Storage rate: UNCHANGED\". The page turns those labels into badges, so use those capitalised words nowhere else.",
   "Say when the earlier values were stated, and say plainly when an earlier value came from your own knowledge rather than a search.",
-  "Cite the source URL for every current value. Add no facts that are not in the findings.",
+  "Cite the source of every current value by its number in square brackets, like [2], never as a URL or link. Add no facts that are not in the findings.",
 ].join("\n");
 
 const MEMORY_RULES = [
@@ -122,13 +127,13 @@ export function selectForRecheck(claims: Claim[], named: string[]) {
   return { items, entities, covered, rechecked };
 }
 
-async function* diffFlow(deps: AgentDeps, input: AgentInput, past: Conversation, decision: RouteDecision): AsyncGenerator<AgentEvent, { context: string; allowSearch: boolean }> {
+async function* diffFlow(deps: AgentDeps, input: AgentInput, past: Conversation, decision: RouteDecision): AsyncGenerator<AgentEvent, { context: string; allowSearch: boolean; logs: SearchLog[] }> {
   const { llm, search, store } = deps;
   const { signal, tz } = input;
 
   let claims = past.claims;
   if (!claims) {
-    yield { type: "status", text: "Reading the earlier answers…" };
+    yield { type: "step", label: "Reading my earlier answers" };
     claims = await extractClaims(llm, past, signal);
     await store.patch(past.id, { claims });
   }
@@ -137,7 +142,7 @@ async function* diffFlow(deps: AgentDeps, input: AgentInput, past: Conversation,
 
   if (rechecked.length === 0) {
     const none = "The earlier conversation has no stored prices, plans or other checkable values, so there is NO BASELINE to compare against. Say that plainly. You may research the current state, but do not claim anything changed.";
-    return { context: `${none}\n${formatDiff(items, tz)}`, allowSearch: true };
+    return { context: `${none}\n${formatDiff(items, tz)}`, allowSearch: true, logs: [] };
   }
 
   const jobs = entities.map((entity) => {
@@ -148,7 +153,6 @@ async function* diffFlow(deps: AgentDeps, input: AgentInput, past: Conversation,
       queries: attrs.map((a) => `${entity} ${a}`.slice(0, 120)),
     };
   });
-  yield { type: "status", text: "Checking what changed…" };
   yield { type: "searching", queries: jobs.flatMap((j) => j.queries) };
   const retrievedAt = input.now().toISOString();
   const settled = await Promise.allSettled(jobs.map((j) => search.search({ objective: j.objective, queries: j.queries, sessionId: input.conv.id })));
@@ -171,13 +175,15 @@ async function* diffFlow(deps: AgentDeps, input: AgentInput, past: Conversation,
   const anyHits = [...hitsByEntity.values()].some((h) => h.length > 0);
   let current = new Map<string, CurrentValue | null>();
   if (anyHits) {
-    yield { type: "status", text: "Comparing then and now…" };
+    yield { type: "step", label: "Comparing then and now" };
     current = await resolveCurrent(llm, rechecked, hitsByEntity, signal);
   }
   items.push(...rechecked.map((c) => compareClaim(c, current.get(c.id) ?? null)));
 
   const omitted = covered.length - rechecked.length;
-  return { context: `${DIFF_RULES}\n\nFindings:\n${formatDiff(items, tz, omitted)}`, allowSearch: false };
+  const sources = numberSources(logs);
+  const findings = formatDiff(items, tz, omitted, (url) => sourceFor(sources, url)?.n);
+  return { context: `${DIFF_RULES}\n\nFindings:\n${findings}`, allowSearch: false, logs };
 }
 
 const turnsOf = (conv: Conversation): Turn[] =>
@@ -210,6 +216,7 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
   // "chat" keeps the tool too: offering it costs no model call, and the router can misjudge
   // a question about current facts as casual talk. The model simply won't call it for small talk.
   let allowSearch = kind === "research" || kind === "chat";
+  let priorSearches: SearchLog[] = []; // searches the then-vs-now check already ran, so citation numbers continue
 
   // Correction ladder: "that's wrong" excludes the conversation we recalled and retries;
   // after a second miss we stop guessing and ask a concrete question.
@@ -228,7 +235,7 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
 
   const needsMemory = kind === "memory" || kind === "memory_research";
   if (needsMemory) {
-    yield { type: "status", text: "Checking my memory of earlier conversations…" };
+    yield { type: "step", label: "Checking my memory of earlier chats" };
     const pool = (await store.getAll()).filter((c) => c.id !== conv.id); // the current chat is not "earlier"
 
     if (askWhich) {
@@ -315,6 +322,7 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
           const diff = yield* diffFlow(deps, input, past, decision);
           context = `${record}\n\n${diff.context}`;
           allowSearch = diff.allowSearch;
+          priorSearches = diff.logs;
         }
       }
     }
@@ -329,5 +337,6 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
     signal,
     maxSearches: allowSearch ? 2 : 0,
     now,
+    priorSearches,
   });
 }

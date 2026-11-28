@@ -27,13 +27,13 @@ const noSearch: Search = { search: async () => [] };
 
 // Starts the app with a fresh user. `fetch` (and `post`) send that user's cookie, like a browser would;
 // `anon` is plain fetch, for a visitor with no cookie.
-async function start(llm: Llm, limits?: Limits) {
+async function start(llm: Llm, limits?: Limits, search: Search = noSearch) {
   const db = await testDb();
   const user = await newUser();
   const now = () => new Date("2026-11-12T08:00:00Z");
   const store = new ConversationStore(db, user, now);
   const profile = new ProfileStore(db, user, now);
-  const server = createApp({ db, llm, search: noSearch, publicDir: path.resolve("public"), now, limits });
+  const server = createApp({ db, llm, search, publicDir: path.resolve("public"), now, limits });
   await new Promise<void>((r) => server.listen(0, r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const fetch = (url: string, init: RequestInit = {}) =>
@@ -55,13 +55,14 @@ test("chat streams tokens and persists both messages", async () => {
   const { base, store, close, fetch, post } = await start(llm);
   const res = await post(base, { text: "hi", tz: "Asia/Kolkata" });
   const evs = events(await res.text());
-  assert.deepEqual(evs.map((e) => e.event), ["meta", "token", "token", "done"]);
+  assert.deepEqual(evs.map((e) => e.event), ["meta", "step", "step", "token", "token", "done"]);
+  assert.deepEqual(evs.filter((e) => e.event === "step").map((e) => e.data.label), ["Understanding the question", "Writing the answer"]);
   const conv = await store.get(evs[0].data.conversationId);
   assert.deepEqual(conv?.messages.map((m) => [m.role, m.text]), [["user", "hi"], ["assistant", "Hello there."]]);
   // How long the answer took is stored on the reply and sent with the "done" event, so history shows it too.
   assert.equal(typeof conv?.messages[1].ms, "number");
   assert.equal(conv?.messages[0].ms, undefined); // only replies are timed
-  assert.equal(evs[3].data.assistantMessage.ms, conv?.messages[1].ms);
+  assert.equal(evs.at(-1)!.data.assistantMessage.ms, conv?.messages[1].ms);
   assert.match(llm.last!.system, /Thursday, 12 November 2026/);
   close();
 });
@@ -264,4 +265,41 @@ test("healthz reports the database is reachable", async () => {
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { ok: true, db: db.kind });
   close();
+});
+
+// A model that asks for one search, then answers citing the first result by number.
+class SearchingLlm implements Llm {
+  calls = 0;
+  async generateJson() {
+    return { route: "research", time_phrase: "", topic: "", entities: [], rejects_previous: false };
+  }
+  async *stream(): AsyncGenerator<LlmEvent> {
+    if (this.calls++ === 0) yield { type: "tool_call", call: { name: "web_search", args: { objective: "Neon price", search_queries: ["neon launch price"] } } };
+    else yield { type: "text", text: "Launch has no monthly fee [1]." };
+  }
+}
+
+test("a researched turn streams its steps and its sources before the answer, and logs time to first progress", async () => {
+  const search: Search = { search: async () => [{ url: "https://neon.com/pricing", title: "Pricing", publishDate: null, excerpts: ["No monthly fee"] }] };
+  const lines: string[] = [];
+  const log = console.log;
+  console.log = (line: string) => lines.push(String(line));
+  try {
+    const { base, close, post } = await start(new SearchingLlm(), undefined, search);
+    const evs = events(await (await post(base, { text: "What does Neon Launch cost?" })).text());
+    close();
+    assert.deepEqual(evs.map((e) => e.event), ["meta", "step", "step", "search_done", "step", "token", "done"]);
+    assert.deepEqual(evs.filter((e) => e.event === "step").map((e) => [e.data.label, e.data.kind]), [
+      ["Understanding the question", undefined],
+      ["Searching: neon launch price", "search"],
+      ["Writing the answer", undefined],
+    ]);
+    assert.deepEqual(evs[3].data.log.urls, ["https://neon.com/pricing"]); // sources arrive before the first token
+    assert.deepEqual(evs.at(-1)!.data.assistantMessage.searches[0].urls, ["https://neon.com/pricing"]);
+  } finally {
+    console.log = log;
+  }
+  const turn = JSON.parse(lines.find((l) => l.includes('"event":"turn"'))!);
+  assert.equal(typeof turn.firstProgressMs, "number");
+  assert.ok(turn.firstProgressMs <= turn.firstTokenMs);
 });

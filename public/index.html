@@ -59,6 +59,7 @@
         <label for="input" class="sr-only">Message Neko</label>
         <textarea id="input" rows="1" placeholder="Ask anything…" autofocus></textarea>
         <button id="send" type="submit">Send</button>
+        <button id="stop" type="button" hidden>Stop</button>
       </form>
       <div id="starters" role="group" aria-label="Try one of these">
         <button type="button" class="starter" data-prompt="What does Spotify Premium cost in the US right now?">
@@ -132,6 +133,6 @@
     <p id="profile-error" class="hint err" hidden></p>
     <div class="dlg-foot"><button id="profile-clear" type="button">Forget everything</button></div>
   </dialog>
-  <script src="/app.js"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>
