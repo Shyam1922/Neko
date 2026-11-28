@@ -2,6 +2,23 @@
 
 A running log of what was chosen, what else was on the table, and why. Newest first.
 
+## 2026-11-28 · Visual redesign: "Night watch"
+
+Three directions were mocked up on a design canvas; the chosen one is C, Night watch: dark-first and calm. This changed how Neko looks, not what it does: no server, API or behaviour changes, and copy only where the new look needed it.
+
+**Colour has two jobs.** Mint (`#5EE6B0` dark, `#0B7A55` light) means watching or active: the "Watch this" dot, the mint outline once something is watched, the dots in the Watching list, the live step's spinner, the memory switch when on, and Send as the one primary action. Amber means changed: the Changed badge, the menu dot and the dot on "Watching · changed". Nothing else is coloured. The old clay accent on New chat, the help pill, links and citations is gone; those are now neutral, so mint and amber stay meaningful.
+- **The message box ring is neutral, not mint.** The box is focused almost all the time (it autofocuses), so a mint ring would put mint on every screen. It uses the muted grey (6.5:1 or more against the card).
+- **Filled mint buttons get an ink focus ring.** A mint ring around a mint button was hard to see.
+
+**Dark-first.** Dark is the default for first visits and when the system says nothing. Light is used when you pick it or the system asks for it (`prefers-color-scheme: light`). The Light / Dark / System switch is unchanged. Pages without the theme script (the email-link pages) follow the same rule in CSS.
+
+**Type.** Space Grotesk 500/700 for headings, the brand and the landing headline; Inter 400/500/600 for the rest, from Google Fonts with `display=swap` and system fallbacks. All-caps section labels and the monospace data labels became sentence-case Inter.
+- **Tabular figures only where numbers line up.** Timings, counts, dates, badges, citations and the then/now lines use `tabular-nums`. Running prose doesn't: Inter's tabular set also widens the hyphen, so "re-check" read as "re - check".
+
+**Shape.** 12px radius on cards, inputs and dialogs, 10px on buttons, pills for badges, citation numbers and source chips. Flat, hairline borders, no gradients or shadows. The cat logo is a simpler mint-on-night mark that stays the same in both themes, and the favicon matches it.
+
+**Checked.** Every text pair is 4.5:1 or more and the focus ring 4.6:1 or more, in both themes (computed). axe-core 4.10 (WCAG 2.2 AA and best practice) reports 0 issues on the landing screen, a chat, the drawer and the profile, help and watch dialogs, at 1280 and 375 px, light and dark. Screenshots and the demo GIF were redone on a fresh account. In the GIF's re-check scene the model answered in plain prose rather than with verdict badges. That's model variance, not the redesign; the README alt text says what the GIF really shows.
+
 ## 2026-11-28 · UX Phase 3: "Watch this", re-checks, optional email, memory switch
 
 The research found Neko's wedge: ChatGPT and Perplexity can re-run a prompt on a schedule, but nothing ties a re-check to *your own earlier answer*. OpenAI's note on proactive features is that they help when they are personal, actionable and steerable, and are intrusive otherwise. So a watch reports only real changes, and the user can see, pause and delete every watch.

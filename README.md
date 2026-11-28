@@ -6,7 +6,7 @@
 
 Designed and built solo by [Shyam](https://github.com/Shyam1922): agent design, retrieval, evals, backend and deployment.
 
-![Neko in use: asking what changed since an earlier chat, with verdict badges and sources](docs/demo.gif)
+![Neko in use: a live research answer with sources, a re-check of it in a new chat, and recall of an earlier chat by meaning](docs/demo.gif)
 
 | | |
 | --- | --- |

@@ -27,7 +27,8 @@ const render = (text, sources = []) => renderAnswer(text, sources).html;
 // The choice lives in this browser only (localStorage). index.html applies it before first paint.
 
 const THEME_KEY = "neko-theme";
-const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+// Dark-first: "System" means dark unless the system asks for light (no preference counts as dark).
+const systemLight = window.matchMedia("(prefers-color-scheme: light)");
 
 function themePref() {
   try {
@@ -39,7 +40,7 @@ function themePref() {
 }
 
 function applyTheme(pref) {
-  const dark = pref === "dark" || (pref === "system" && systemDark.matches);
+  const dark = pref === "dark" || (pref === "system" && !systemLight.matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
   for (const b of document.querySelectorAll("#theme-seg button")) b.setAttribute("aria-checked", String(b.dataset.themePref === pref));
 }
@@ -54,7 +55,7 @@ function setTheme(pref) {
   applyTheme(pref);
 }
 
-systemDark.addEventListener("change", () => {
+systemLight.addEventListener("change", () => {
   if (themePref() === "system") applyTheme("system"); // follow the OS when it switches
 });
 
@@ -711,6 +712,7 @@ function syncWatchButton(b) {
   const w = watches.find((x) => x.messageId === b.dataset.messageId);
   b.textContent = w ? (w.unseenChange ? "Watching · changed" : "Watching") : "Watch this";
   b.setAttribute("aria-pressed", String(Boolean(w)));
+  b.classList.toggle("is-changed", Boolean(w?.unseenChange)); // amber dot: something it watches changed
   b.title = w ? "See what is watched and the last check" : "Re-check these facts every week and tell me if they change";
 }
 
