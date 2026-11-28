@@ -25,6 +25,10 @@
         <span>Neko</span>
       </div>
       <button id="new-chat" type="button">+ New chat</button>
+      <div id="watch-section" hidden>
+        <div class="side-label" id="watch-label">Watching</div>
+        <nav id="watch-list" aria-labelledby="watch-label"></nav>
+      </div>
       <div class="side-label">Chats</div>
       <nav id="history" aria-label="Recent chats"></nav>
     </aside>
@@ -32,7 +36,7 @@
 
     <main id="main" class="empty">
       <header id="topbar">
-        <button id="menu" type="button" aria-label="Show chat history" aria-controls="sidebar" aria-expanded="false">☰</button>
+        <button id="menu" type="button" aria-label="Show chat history" aria-controls="sidebar" aria-expanded="false">☰<span id="menu-dot" class="dot" hidden></span></button>
         <h1 id="chat-title"></h1>
         <button id="open-about-top" type="button" class="pill-btn" aria-label="What can Neko do?" title="See what Neko can do">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M10 3l1.9 5.4L17.3 10l-5.4 1.9L10 17.3 8.1 11.9 2.7 10l5.4-1.6L10 3z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"/></svg>
@@ -127,11 +131,45 @@
       <button type="button" role="radio" data-theme-pref="system" aria-checked="true">System</button>
     </div>
 
+    <p class="dlg-sec" id="memory-label">Memory</p>
+    <div class="switch-row">
+      <div>
+        <div class="switch-title" id="memory-title">Remember things I tell you about myself</div>
+        <p class="hint" id="memory-hint">When off, I don't save anything new about you and don't use what's saved. Your chats and watches are not affected.</p>
+      </div>
+      <button id="memory-switch" type="button" role="switch" aria-checked="true" aria-labelledby="memory-title" aria-describedby="memory-hint"><span class="knob" aria-hidden="true"></span><span id="memory-state" class="sr-only">On</span></button>
+    </div>
+
+    <div id="email-section" hidden>
+      <p class="dlg-sec">Email</p>
+      <div id="email-none">
+        <p class="hint">Optional. Add an email to hear when something you watch changes, and to open your chats and watches on another device. No password: I send a link.</p>
+        <button id="profile-email-start" type="button" class="quiet-btn">Add an email</button>
+      </div>
+      <div id="email-set" hidden>
+        <p class="hint">Signed in as <b id="email-addr"></b>.</p>
+        <label class="check-row"><input id="email-notify" type="checkbox"> Email me when something I watch changes</label>
+        <button id="email-remove" type="button" class="quiet-btn">Remove email</button>
+      </div>
+    </div>
+
     <p class="dlg-sec">What I know about you</p>
     <p class="hint">I only save things you tell me outright, in your own words. Edit or remove anything here.</p>
     <div id="profile-list"></div>
     <p id="profile-error" class="hint err" hidden></p>
     <div class="dlg-foot"><button id="profile-clear" type="button">Forget everything</button></div>
+  </dialog>
+  <dialog id="watch-dialog" aria-labelledby="watch-title">
+    <div class="dlg-head">
+      <h2 id="watch-title">Watching</h2>
+      <button id="watch-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div id="watch-body"></div>
+    <div class="dlg-foot watch-foot">
+      <button id="watch-chat" type="button" class="quiet-btn">Open the chat</button>
+      <button id="watch-pause" type="button" class="quiet-btn">Pause</button>
+      <button id="watch-delete" type="button" class="quiet-btn danger">Delete</button>
+    </div>
   </dialog>
   <script type="module" src="/app.js"></script>
 </body>

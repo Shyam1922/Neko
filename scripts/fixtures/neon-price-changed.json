@@ -1,0 +1,15 @@
+{
+  "note": "Fixed search results for `npm run recheck -- --all --fixture scripts/fixtures/neon-price-changed.json`: the Neon Launch compute price is raised on purpose, so a watch on a Neon pricing answer comes back Changed. Not real pricing.",
+  "hits": [
+    {
+      "url": "https://neon.com/pricing",
+      "title": "Neon pricing",
+      "publishDate": "2026-12-05",
+      "excerpts": [
+        "Launch plan. No monthly minimum: you pay only for what you use.",
+        "Launch plan compute: $0.14 per CU-hour.",
+        "Launch plan storage: $0.35 per GB-month."
+      ]
+    }
+  ]
+}

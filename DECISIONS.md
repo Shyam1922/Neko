@@ -2,6 +2,31 @@
 
 A running log of what was chosen, what else was on the table, and why. Newest first.
 
+## 2026-11-28 · UX Phase 3: "Watch this", re-checks, optional email, memory switch
+
+The research found Neko's wedge: ChatGPT and Perplexity can re-run a prompt on a schedule, but nothing ties a re-check to *your own earlier answer*. OpenAI's note on proactive features is that they help when they are personal, actionable and steerable, and are intrusive otherwise. So a watch reports only real changes, and the user can see, pause and delete every watch.
+
+**A watch reuses then-vs-now, not a new pipeline.** "Watch this" stores the claims Neko already extracts from that answer: verified quotes, with plan, billing and units. A re-check runs the same search → `resolveCurrent` → `compareClaim` path as the chat. That path now lives in `src/agent/check.ts`, shared by both, so a watch and a question can't disagree. Code decides the verdict.
+
+**The rule for telling the user is "Changed" or nothing.** A watch is marked changed only when at least one fact got a real Changed verdict. "Couldn't verify" is shown in the watch's panel but never as a change, and never emailed: a source that is down is not news. After a change, today's verified value becomes the new baseline, so one change is reported once rather than every week. The check history keeps the old value.
+
+**Re-checks run from outside.** Render's free service sleeps, so an in-process timer would silently stop. A GitHub Actions workflow wakes the site daily and calls `POST /api/cron/recheck`. The endpoint is off unless `CRON_SECRET` is set; the secret is compared in constant time and calls are rate-limited. Each call handles a bounded batch (`RECHECK_BATCH`, default 5), leased in a transaction (`FOR UPDATE SKIP LOCKED`) so a retried call can't check the same watch twice. A run never takes more than today's quota has left: `TURNS_PER_DAY` now counts chat messages and re-checks together, in both directions. A failed check (rate limit, outage) is retried the next day, not the next week. Watches are capped at 10 per person.
+
+**Email is optional, and earned at the moment of watching.** Without `RESEND_API_KEY` and `EMAIL_FROM`, the app never mentions email. With them, adding a watch offers "Email me when it changes", which sends a sign-in link. The rules:
+- **Stored only after confirming.** The address goes on the account only after the link is opened. Until then it exists only on the token.
+- **Tokens.** 32 random bytes, stored as a SHA-256 hash, single use, 30 minutes.
+- **Same browser only.** The link must be opened in the browser that asked for it. Otherwise someone could send you a link that ties *your* address to *their* account, and then read the chats you have afterwards.
+- **Signing in on another device.** A link for an address that already has an account signs the browser in to that account. That's how the same watches are reached elsewhere; it is safe because only the inbox owner can open the link.
+- **Links never act on GET.** They open a page with a button, because mail scanners open links to check them and would otherwise use up the sign-in or unsubscribe people.
+- **No account id in any email.** Every email has a one-click unsubscribe (with `List-Unsubscribe-Post`) that uses its own random token, never the account id, because the account id is the login cookie.
+- **Forget everything** removes the address.
+
+**The memory switch** (Your profile → Memory) works like ChatGPT's. When it is off, Neko neither saves new profile facts nor puts saved ones in the prompt. Saved facts stay until deleted, and recall of past chats is unaffected.
+
+**For local testing:** `npm run recheck -- --all --fixture scripts/fixtures/neon-price-changed.json --print-email` makes a watched Neon price change on purpose. `EMAIL_LOG=1` prints emails to the server log instead of sending them (local only; it would leak sign-in links on a server).
+
+**Verified end to end** on a scratch database, with the real model. I watched a Neon pricing answer, which produced 4 facts, and confirmed a test address through the printed link. `npm run recheck` against the fixture then returned compute $0.106 → $0.14 as Changed, storage as Unchanged, and the two facts the page didn't state as Couldn't verify. It sent exactly one email. The app showed "Watching · 1 changed", and the email's link opened the watch panel, which cleared the badge. axe-core found 0 issues on the chat with Watch this, the drawer, the watch panel, the profile panel and the email form, at 1280 and 375 px, light and dark.
+
 ## 2026-11-28 · UX Phase 2: visible progress, Stop, and citations done by code
 
 The audit timed a researched answer at 39.1 s with the first word at 38.9 s, and the screen showed one line the whole time. NN/g puts the limit of attention near 10 s; Perplexity found people wait longer when they can see progress.

@@ -35,15 +35,23 @@ export async function turnLimitReason(db: Db, userId: string, now: Date, limits:
     }
   }
   if (limits.turnsPerDay > 0) {
-    const { rows } = await db.query<{ n: number }>(
-      "SELECT count(*)::int AS n FROM messages WHERE role = 'user' AND at > $1 AND at <= $2",
-      [new Date(now.getTime() - DAY).toISOString(), now.toISOString()],
-    );
-    if (rows[0].n >= limits.turnsPerDay) {
+    if ((await dailyUsage(db, now)) >= limits.turnsPerDay) {
       return "Neko has used up its free model quota for today. Please try again tomorrow.";
     }
   }
   return null;
+}
+
+/** Model work in the last 24 hours, across everyone: chat turns plus scheduled re-checks of watched facts. */
+export async function dailyUsage(db: Db, now: Date): Promise<number> {
+  const from = new Date(now.getTime() - DAY).toISOString();
+  const to = now.toISOString();
+  const { rows } = await db.query<{ n: number }>(
+    `SELECT (SELECT count(*) FROM messages WHERE role = 'user' AND at > $1 AND at <= $2)
+          + (SELECT count(*) FROM watch_checks WHERE checked_at > $1 AND checked_at <= $2) AS n`,
+    [from, to],
+  );
+  return Number(rows[0].n);
 }
 
 /** The caller's IP. Behind a proxy, the last X-Forwarded-For entry is the one the proxy added (earlier ones can be forged). */

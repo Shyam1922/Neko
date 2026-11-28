@@ -14,7 +14,8 @@ import { recall } from "../memory/recall.ts";
 import type { ProfileStore } from "../memory/profile.ts";
 import type { Claim, Conversation, ConversationStore, RecallMeta, SearchLog } from "../memory/store.ts";
 import { extractClaims } from "./claims.ts";
-import { compareClaim, noBaseline, resolveCurrent, type CurrentValue, type DiffItem } from "./compare.ts";
+import { noBaseline, type DiffItem } from "./compare.ts";
+import { checkClaims } from "./check.ts";
 import { acceptCandidates } from "./personalize.ts";
 import { buildSystemPrompt } from "./prompt.ts";
 import { runTurn, type TurnEvent } from "./research.ts";
@@ -36,6 +37,7 @@ export interface AgentInput {
   tz: string;
   now: () => Date;
   signal?: AbortSignal;
+  useProfile?: boolean; // false when the user has switched memory off (default true)
 }
 
 export type SavedFact = { id: string; key: string; value: string; previous?: string };
@@ -138,47 +140,16 @@ async function* diffFlow(deps: AgentDeps, input: AgentInput, past: Conversation,
     await store.patch(past.id, { claims });
   }
 
-  const { items, entities, covered, rechecked } = selectForRecheck(claims, decision.entities);
+  const { items, covered, rechecked } = selectForRecheck(claims, decision.entities);
 
   if (rechecked.length === 0) {
     const none = "The earlier conversation has no stored prices, plans or other checkable values, so there is NO BASELINE to compare against. Say that plainly. You may research the current state, but do not claim anything changed.";
     return { context: `${none}\n${formatDiff(items, tz)}`, allowSearch: true, logs: [] };
   }
 
-  const jobs = entities.map((entity) => {
-    const attrs = unique(rechecked.filter((c) => c.entity === entity).map((c) => c.attribute)).slice(0, 2);
-    return {
-      entity,
-      objective: `Current ${attrs.join(" and ")} for ${entity}, with plan and billing period, from official sources.`,
-      queries: attrs.map((a) => `${entity} ${a}`.slice(0, 120)),
-    };
-  });
-  yield { type: "searching", queries: jobs.flatMap((j) => j.queries) };
-  const retrievedAt = input.now().toISOString();
-  const settled = await Promise.allSettled(jobs.map((j) => search.search({ objective: j.objective, queries: j.queries, sessionId: input.conv.id })));
-
-  const hitsByEntity = new Map<string, SearchHit[]>();
-  const logs: SearchLog[] = [];
-  settled.forEach((r, i) => {
-    const log: SearchLog = { query: jobs[i].queries.join(" | "), urls: [], retrievedAt };
-    if (r.status === "fulfilled") {
-      hitsByEntity.set(jobs[i].entity, r.value);
-      log.urls = r.value.map((h) => h.url);
-    } else {
-      log.error = String(r.reason?.message ?? r.reason).slice(0, 300);
-    }
-    logs.push(log);
-  });
-  for (const log of logs) yield { type: "search_done", log };
-
-  // If every search failed there is nothing to read; skip the model call and report "could not verify".
-  const anyHits = [...hitsByEntity.values()].some((h) => h.length > 0);
-  let current = new Map<string, CurrentValue | null>();
-  if (anyHits) {
-    yield { type: "step", label: "Comparing then and now" };
-    current = await resolveCurrent(llm, rechecked, hitsByEntity, signal);
-  }
-  items.push(...rechecked.map((c) => compareClaim(c, current.get(c.id) ?? null)));
+  const checked = yield* checkClaims(llm, search, rechecked, { sessionId: input.conv.id, now: input.now, signal });
+  const logs = checked.logs;
+  items.push(...checked.items);
 
   const omitted = covered.length - rechecked.length;
   const sources = numberSources(logs);
@@ -192,6 +163,7 @@ const turnsOf = (conv: Conversation): Turn[] =>
 export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenerator<AgentEvent> {
   const { llm, search, store } = deps;
   const { conv, tz, now, signal } = input;
+  const useProfile = input.useProfile ?? true; // the user's memory switch: off = save nothing new, use nothing saved
 
   const routeStart = Date.now();
   const decision = await route(llm, conv.messages, now(), tz, signal);
@@ -200,14 +172,14 @@ export async function* runAgent(deps: AgentDeps, input: AgentInput): AsyncGenera
   // Personalisation: save what the user said about themselves (verified quotes only), then use it for this very reply.
   const userMsg = conv.messages[conv.messages.length - 1];
   const saved: SavedFact[] = [];
-  if (userMsg?.role === "user") {
+  if (userMsg?.role === "user" && useProfile) {
     for (const c of acceptCandidates(decision.profileUpdates, userMsg.text)) {
       const r = await deps.profile.upsert(c, { conversationId: conv.id, messageId: userMsg.id });
       if (r) saved.push({ id: r.fact.id, key: r.fact.key, value: r.fact.value, previous: r.previous });
     }
   }
   if (saved.length) yield { type: "profile", saved };
-  const aboutUser = await deps.profile.list();
+  const aboutUser = useProfile ? await deps.profile.list() : [];
   let kind: Route = decision.route;
   let phrase = decision.timePhrase;
   let topic = decision.topic ?? (decision.entities.join(" ") || undefined);

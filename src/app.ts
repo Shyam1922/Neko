@@ -14,6 +14,12 @@ import { safeTimeZone } from "./memory/dates.ts";
 import { clientIp, NO_LIMITS, SlidingWindow, turnLimitReason, type Limits } from "./limits.ts";
 import { logEvent, userTag } from "./log.ts";
 import type { SemanticIndex } from "./memory/semantic.ts";
+import { createHash, timingSafeEqual } from "node:crypto";
+import type { Mailer } from "./adapters/email.ts";
+import { extractClaims } from "./agent/claims.ts";
+import { runRecheck } from "./agent/recheck.ts";
+import { confirmEmail, getAccount, isEmail, removeEmail, setEmailNotify, setMemory, startEmail, TOKEN_TTL_MS, unsubscribe } from "./memory/account.ts";
+import { MAX_WATCHES, WatchStore } from "./memory/watches.ts";
 
 export interface AppDeps {
   db: Db;
@@ -23,7 +29,33 @@ export interface AppDeps {
   now?: () => Date;
   limits?: Limits; // off unless given: local use and tests are unlimited
   semantic?: SemanticIndex; // embeddings for recall; without it, keywords only
+  mailer?: Mailer; // optional: without it, the app never offers email
+  publicUrl?: string; // for links in emails
+  cronSecret?: string; // without it, POST /api/cron/recheck is off
+  recheckBatch?: number;
 }
+
+const HOUR = 3600_000;
+
+/** Compares secrets in constant time (hashing first makes the lengths equal). */
+function sameSecret(a: string, b: string): boolean {
+  const h = (s: string) => createHash("sha256").update(s).digest();
+  return timingSafeEqual(h(a), h(b));
+}
+
+const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** A small page in Neko's style for the links in emails. Every argument is plain text or our own markup. */
+function sendPage(res: http.ServerResponse, status: number, title: string, body: string) {
+  res.writeHead(status, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
+  res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escHtml(title)} · Neko</title><link rel="stylesheet" href="/style.css">
+<script>try{var t=localStorage.getItem("neko-theme");document.documentElement.dataset.theme=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"}catch(e){}</script></head>
+<body class="page"><main class="page-card"><h1>${escHtml(title)}</h1>${body}</main></body></html>`);
+}
+
+const formPage = (action: string, token: string, intro: string, button: string) =>
+  `<p>${escHtml(intro)}</p><form method="post" action="${action}"><input type="hidden" name="t" value="${escHtml(token)}"><button type="submit" class="page-btn">${escHtml(button)}</button></form>`;
 
 // Wraps the model so one turn can report how many calls it made.
 function countingLlm(llm: Llm) {
@@ -83,8 +115,11 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export function createApp({ db, llm, search, publicDir, now = () => new Date(), limits = NO_LIMITS, semantic }: AppDeps): http.Server {
+export function createApp({ db, llm, search, publicDir, now = () => new Date(), limits = NO_LIMITS, semantic, mailer, publicUrl = "http://localhost:3000", cronSecret, recheckBatch = 5 }: AppDeps): http.Server {
   const newUsersPerIp = new SlidingWindow(limits.newUsersPerIpPerHour, 3600_000);
+  const watchAdds = new SlidingWindow(20, HOUR); // per user: each new watch costs a model call to read the answer
+  const emailStarts = new SlidingWindow(5, HOUR); // per user: don't let anyone use Neko to spam an inbox
+  const cronCalls = new SlidingWindow(12, HOUR); // even with the secret, a bounded number of runs
 
   // The user behind this request, or null for a visitor who has never sent a message. Only `create`
   // (sending a message) makes a new user, so page loads and bots do not fill the users table.
@@ -128,6 +163,7 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
       return sendJson(res, 429, { error: why });
     }
     const { store, profile } = storesFor(userId);
+    const { memoryOn } = await getAccount(db, userId);
     let saved;
     try {
       saved = await store.append(input.conversationId as string | undefined, { role: "user", text, tz });
@@ -188,7 +224,7 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
       });
     try {
       step("Understanding the question");
-      for await (const ev of runAgent({ llm: counted.llm, search, store, profile, semantic }, { conv, tz, now, signal: abort.signal })) {
+      for await (const ev of runAgent({ llm: counted.llm, search, store, profile, semantic }, { conv, tz, now, signal: abort.signal, useProfile: memoryOn })) {
         if (ev.type === "route") {
           routeName = ev.route;
           routeMs = ev.ms;
@@ -231,6 +267,94 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
     res.end();
   }
 
+  // "Watch this" on an answer: store the facts Neko already extracts for then-vs-now, from that answer only.
+  async function addWatch(req: http.IncomingMessage, res: http.ServerResponse, userId: string | null, store: ConversationStore | null, watches: WatchStore | null) {
+    let body: any = {};
+    try {
+      body = JSON.parse(await readBody(req));
+    } catch {
+      return sendJson(res, 400, { error: "Body must be JSON." });
+    }
+    if (!isValidId(body.conversationId) || !isValidId(body.messageId)) return sendJson(res, 400, { error: "conversationId and messageId are required." });
+    if (!userId || !store || !watches) return sendJson(res, 404, { error: "Conversation not found" });
+    const conv = await store.get(body.conversationId);
+    const msg = conv?.messages.find((m) => m.id === body.messageId && m.role === "assistant");
+    if (!conv || !msg) return sendJson(res, 404, { error: "Answer not found" });
+    if (!watchAdds.take(userId)) return sendJson(res, 429, { error: "Too many watches added in the last hour. Please try again later." });
+    const ofMsg = (cs: typeof conv.claims) => (cs ?? []).filter((c) => c.messageId === msg.id && c.perishability === "volatile");
+    let claims = ofMsg(conv.claims);
+    if (!claims.length) {
+      try {
+        const all = await extractClaims(llm, conv); // quotes verified by code; unverifiable claims are dropped
+        await store.patch(conv.id, { claims: all });
+        claims = ofMsg(all);
+      } catch (err) {
+        return sendJson(res, 502, { error: friendlyMessage(err) });
+      }
+    }
+    if (!claims.length) return sendJson(res, 422, { error: "I couldn't find a price, plan or other fact that can change in this answer, so there's nothing to watch." });
+    const made = await watches.create({ conversationId: conv.id, messageId: msg.id, claims });
+    if (!made.ok) {
+      return made.reason === "exists"
+        ? sendJson(res, 409, { error: "You're already watching this answer." })
+        : sendJson(res, 409, { error: `You can watch up to ${MAX_WATCHES} things. Delete one to add another.` });
+    }
+    logEvent("watch_added", { user: userTag(userId), claims: made.watch.claims.length });
+    return sendJson(res, 201, made.watch);
+  }
+
+  // The daily re-check, called by a scheduled job with the shared secret.
+  async function cron(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
+    if (!cronSecret) return sendJson(res, 404, { error: "Re-checks are not enabled on this server (CRON_SECRET is not set)." });
+    const auth = String(req.headers.authorization ?? "");
+    const given = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    if (!given || !sameSecret(given, cronSecret)) {
+      logEvent("cron_denied", { ip: clientIp(req, limits.trustProxy) });
+      return sendJson(res, 401, { error: "Unauthorized" });
+    }
+    if (!cronCalls.take("cron")) return sendJson(res, 429, { error: "Too many re-check runs in the last hour." });
+    const summary = await runRecheck({ db, llm, search, now, limits, batch: recheckBatch, mailer, publicUrl });
+    logEvent("cron_recheck", { ...summary });
+    return sendJson(res, 200, summary);
+  }
+
+  // Links in emails open a page with a button, never act on GET: mail scanners open links to check them,
+  // and would otherwise use up a sign-in link or unsubscribe someone.
+  async function emailLink(req: http.IncomingMessage, res: http.ServerResponse, url: URL) {
+    const isConfirm = url.pathname === "/api/email/confirm";
+    if (url.pathname !== "/api/email/confirm" && url.pathname !== "/api/email/unsubscribe") return sendJson(res, 404, { error: "Not found" });
+    let token = url.searchParams.get("t") ?? "";
+    if (req.method === "POST") {
+      const form = new URLSearchParams(await readBody(req).catch(() => ""));
+      token = form.get("t") ?? token;
+    } else if (req.method !== "GET") {
+      return sendJson(res, 405, { error: "Method not allowed" });
+    }
+    if (isConfirm) {
+      if (req.method === "GET") return sendPage(res, 200, "Confirm your email", formPage("/api/email/confirm", token, "Get an email from Neko when something you watch changes.", "Confirm my email"));
+      const r = await confirmEmail(db, token, cookieUserId(req) ?? null, now());
+      if (!r.ok) {
+        const why = {
+          invalid: "This link isn't valid. Ask for a new one from Neko.",
+          used: "This link has already been used. Ask for a new one if you need it.",
+          expired: "This link has expired. Ask for a new one from Neko.",
+          other_browser: "Open this link in the browser where you asked for it, so your email goes to the right Neko account.",
+        }[r.reason];
+        return sendPage(res, 400, "That didn't work", `<p>${escHtml(why)}</p><p><a href="/">Back to Neko</a></p>`);
+      }
+      setUserCookie(req, res, r.userId);
+      logEvent("email_confirmed", { user: userTag(r.userId), signedIn: r.signedIn });
+      const msg = r.signedIn
+        ? "You're signed in. This browser now shows the chats, profile and watches of the account that uses this email."
+        : "Done. Neko will email you when something you watch changes. Every email has a link to stop them.";
+      return sendPage(res, 200, r.signedIn ? "Signed in" : "Email confirmed", `<p>${escHtml(msg)}</p><p><a href="/">Back to Neko</a></p>`);
+    }
+    if (req.method === "GET") return sendPage(res, 200, "Stop change emails?", formPage("/api/email/unsubscribe", token, "Neko will stop emailing you about changes. Your watches keep working in the app.", "Stop emails"));
+    const ok = await unsubscribe(db, token);
+    return sendPage(res, ok ? 200 : 400, ok ? "Unsubscribed" : "That didn't work", `<p>${ok ? "You won't get change emails any more. You can turn them back on in Your profile." : "This link isn't valid."}</p><p><a href="/">Back to Neko</a></p>`);
+  }
+
   async function serveStatic(urlPath: string, res: http.ServerResponse) {
     const rel = urlPath === "/" ? "index.html" : decodeURIComponent(urlPath.slice(1));
     const file = path.resolve(publicDir, rel);
@@ -250,6 +374,8 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
       const url = new URL(req.url ?? "/", "http://localhost");
       const { pathname } = url;
       if (req.method === "POST" && pathname === "/api/chat") return await chat(req, res);
+      if (pathname === "/api/cron/recheck") return await cron(req, res);
+      if (pathname.startsWith("/api/email/") && (pathname.endsWith("/confirm") || pathname.endsWith("/unsubscribe"))) return await emailLink(req, res, url);
       // For the platform's health check: the process is up and the database answers.
       if (pathname === "/healthz") {
         await db.query("SELECT 1");
@@ -288,7 +414,93 @@ export function createApp({ db, llm, search, publicDir, now = () => new Date(), 
       // What Neko knows about the user: visible, editable, deletable.
       if (pathname === "/api/profile") {
         if (req.method === "GET") return sendJson(res, 200, profile ? await profile.list() : []);
-        if (req.method === "DELETE") return await profile?.clear(), sendJson(res, 200, { ok: true });
+        if (req.method === "DELETE") {
+          await profile?.clear();
+          if (userId) await removeEmail(db, userId); // "Forget everything" includes the email address
+          return sendJson(res, 200, { ok: true });
+        }
+      }
+
+      // Settings: the memory switch, and the optional email.
+      if (pathname === "/api/me") {
+        if (req.method === "GET") {
+          const acct = userId ? await getAccount(db, userId) : { memoryOn: true, email: null, emailNotify: false };
+          return sendJson(res, 200, { ...acct, emailAvailable: Boolean(mailer), maxWatches: MAX_WATCHES });
+        }
+        if (req.method === "PUT") {
+          let body: any = {};
+          try {
+            body = JSON.parse(await readBody(req));
+          } catch {
+            return sendJson(res, 400, { error: "Body must be JSON." });
+          }
+          const me = await currentUser(req, res, true);
+          if (me === "limited" || !me) return sendJson(res, 429, { error: "Too many new visitors from your network in the last hour." });
+          if (typeof body.memoryOn === "boolean") await setMemory(db, me, body.memoryOn);
+          if (typeof body.emailNotify === "boolean") await setEmailNotify(db, me, body.emailNotify);
+          return sendJson(res, 200, { ...(await getAccount(db, me)), emailAvailable: Boolean(mailer), maxWatches: MAX_WATCHES });
+        }
+      }
+      if (pathname === "/api/email/start" && req.method === "POST") {
+        if (!mailer) return notFound("Email is not set up on this server.");
+        let email: unknown;
+        try {
+          email = JSON.parse(await readBody(req)).email;
+        } catch {
+          /* handled below */
+        }
+        if (!isEmail(email)) return sendJson(res, 400, { error: "That doesn't look like an email address." });
+        const me = await currentUser(req, res, true);
+        if (me === "limited" || !me) return sendJson(res, 429, { error: "Too many new visitors from your network in the last hour." });
+        if (!emailStarts.take(me)) return sendJson(res, 429, { error: "Too many sign-in emails in the last hour. Please try again later." });
+        const token = await startEmail(db, me, email, now());
+        const link = `${publicUrl}/api/email/confirm?t=${encodeURIComponent(token)}`;
+        try {
+          await mailer.send({
+            to: email.trim(),
+            subject: "Confirm your email for Neko",
+            text: `Open this link to get an email from Neko when something you watch changes:\n\n${link}\n\nIt works once, for ${TOKEN_TTL_MS / 60_000} minutes, in the browser where you asked for it.\nIf you didn't ask for this, ignore this email; nothing changes.`,
+          });
+        } catch (err: any) {
+          logEvent("email_error", { user: userTag(me), error: String(err?.message ?? err).slice(0, 300) });
+          return sendJson(res, 502, { error: "The email couldn't be sent. Please try again later." });
+        }
+        return sendJson(res, 200, { ok: true });
+      }
+      if (pathname === "/api/email" && req.method === "DELETE") {
+        if (userId) await removeEmail(db, userId);
+        return sendJson(res, 200, { ok: true });
+      }
+
+      // Watches: facts from an answer, re-checked on a schedule.
+      const watches = userId ? new WatchStore(db, userId, now) : null;
+      if (pathname === "/api/watches") {
+        if (req.method === "GET") return sendJson(res, 200, watches ? await watches.list() : []);
+        if (req.method === "POST") return await addWatch(req, res, userId, store, watches);
+      }
+      const w = pathname.match(/^\/api\/watches\/([^/]+)$/);
+      if (w && !watches) return notFound("Watch not found");
+      if (w && req.method === "GET") {
+        const found = isValidId(w[1]) ? await watches!.get(w[1]) : null;
+        return found ? sendJson(res, 200, found) : notFound("Watch not found");
+      }
+      if (w && req.method === "PATCH") {
+        let body: any = {};
+        try {
+          body = JSON.parse(await readBody(req));
+        } catch {
+          return sendJson(res, 400, { error: "Body must be JSON." });
+        }
+        if (!isValidId(w[1])) return notFound("Watch not found");
+        if (body.status === "active" || body.status === "paused") {
+          if (!(await watches!.setStatus(w[1], body.status))) return notFound("Watch not found");
+        }
+        if (body.seen === true) await watches!.markSeen(w[1]);
+        const found = await watches!.get(w[1]);
+        return found ? sendJson(res, 200, found) : notFound("Watch not found");
+      }
+      if (w && req.method === "DELETE") {
+        return isValidId(w[1]) && (await watches!.remove(w[1])) ? sendJson(res, 200, { ok: true }) : notFound("Watch not found");
       }
       const pf = pathname.match(/^\/api\/profile\/([^/]+)$/);
       if (pf && !profile) return notFound();

@@ -14,6 +14,7 @@
     "ping:model": "tsx --env-file-if-exists=.env scripts/ping-model.ts",
     "import:json": "tsx --env-file-if-exists=.env scripts/import-json.ts",
     "stats": "tsx --env-file-if-exists=.env scripts/stats.ts",
+    "recheck": "tsx --env-file-if-exists=.env scripts/recheck.ts",
     "eval": "tsx --env-file-if-exists=.env eval/run.ts"
   },
   "dependencies": {

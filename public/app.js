@@ -498,6 +498,7 @@ async function openConversation(id) {
   resetLog();
   conv.messages.forEach((m, i) => {
     const bubble = addMessage(m.role, m.text, m.at, m);
+    if (m.role === "assistant" && (m.searches || []).some((x) => !x.error && x.urls?.length)) addWatchAction(bubble.closest(".msg"), m.id);
     // A reply that was stopped (or cut off) is not saved, so its question stands alone. Say so.
     if (m.role === "user" && conv.messages[i + 1]?.role !== "assistant") {
       note(bubble.closest(".msg"), "No answer was saved for this question.");
@@ -574,6 +575,8 @@ async function submit(text) {
         } else if (event === "done") {
           serverMs = data.assistantMessage?.ms;
           outcome = "done";
+          const m = data.assistantMessage;
+          if (m && (m.searches || []).some((x) => !x.error && x.urls?.length)) addWatchAction(wrap, m.id);
         } else if (event === "profile") {
           remembered = data.saved;
         } else if (event === "token") {
@@ -608,6 +611,250 @@ async function submit(text) {
     loadHistory(); // the chat now exists (or has a new message): refresh the sidebar
     loadProfile(); // and the router may have learned something about the user
   }
+}
+
+
+// ---- "Watch this": re-check an answer's facts every week, and say only when something changed -------------
+
+let me = { memoryOn: true, email: null, emailNotify: false, emailAvailable: false, maxWatches: 10 };
+let watches = [];
+const watchDialog = $("watch-dialog");
+let openWatchId = null;
+
+const shortDate = (iso) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+const httpUrl = (u) => {
+  try {
+    const url = new URL(u);
+    return /^https?:$/.test(url.protocol) ? url : null;
+  } catch {
+    return null;
+  }
+};
+const VERDICT = { changed: ["b-changed", "Changed"], unchanged: ["b-same", "Unchanged"], couldnt_verify: ["b-unv", "Couldn't verify"], no_baseline: ["b-none", "No baseline"] };
+const badge = (verdict) => {
+  const [cls, label] = VERDICT[verdict] ?? VERDICT.couldnt_verify;
+  const b = document.createElement("span");
+  b.className = `badge ${cls}`;
+  b.textContent = label;
+  return b;
+};
+const el = (tag, cls, text) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+async function loadMe() {
+  try {
+    const res = await fetch("/api/me");
+    if (res.ok) me = await res.json();
+  } catch {
+    /* defaults: memory on, no email */
+  }
+  renderSettings();
+}
+
+async function loadWatches() {
+  try {
+    const res = await fetch("/api/watches");
+    if (res.ok) watches = await res.json();
+  } catch {
+    /* the list is a convenience */
+  }
+  renderWatches();
+  for (const b of document.querySelectorAll(".watch-btn")) syncWatchButton(b);
+}
+
+// The "Watching" section at the top of the sidebar; changed watches first, with a badge.
+function renderWatches() {
+  const list = $("watch-list");
+  list.textContent = "";
+  $("watch-section").hidden = watches.length === 0;
+  const unseen = watches.filter((w) => w.unseenChange).length;
+  $("watch-label").textContent = unseen ? `Watching · ${unseen} changed` : "Watching";
+  $("menu-dot").hidden = unseen === 0;
+  $("menu").setAttribute("aria-label", unseen ? `Show chats and watches, ${unseen} changed` : "Show chat history");
+  for (const w of watches) {
+    const b = el("button", "item watch-item");
+    b.type = "button";
+    b.title = w.title;
+    const t = el("span", "watch-name", w.title);
+    b.append(t);
+    if (w.unseenChange) b.append(badge("changed"));
+    else if (w.status === "paused") b.append(el("span", "chip", "Paused"));
+    b.addEventListener("click", () => openWatch(w.id));
+    const row = el("div", "row");
+    row.append(b);
+    list.append(row);
+  }
+}
+
+// Under a researched answer: "Watch this", or "Watching" once it is.
+function addWatchAction(wrap, messageId) {
+  if (!messageId || !conversationId || wrap.querySelector(".watch-btn")) return;
+  const bar = el("div", "watch-bar");
+  const b = el("button", "watch-btn");
+  b.type = "button";
+  b.dataset.messageId = messageId;
+  bar.append(b);
+  wrap.querySelector(".card").append(bar);
+  syncWatchButton(b);
+  b.addEventListener("click", () => {
+    const w = watches.find((x) => x.messageId === messageId);
+    if (w) return openWatch(w.id);
+    startWatch(b, bar, messageId);
+  });
+}
+
+function syncWatchButton(b) {
+  const w = watches.find((x) => x.messageId === b.dataset.messageId);
+  b.textContent = w ? (w.unseenChange ? "Watching · changed" : "Watching") : "Watch this";
+  b.setAttribute("aria-pressed", String(Boolean(w)));
+  b.title = w ? "See what is watched and the last check" : "Re-check these facts every week and tell me if they change";
+}
+
+async function startWatch(b, bar, messageId) {
+  b.disabled = true;
+  b.textContent = "Reading the answer…";
+  bar.querySelector(".watch-msg")?.remove();
+  const res = await fetch("/api/watches", { method: "POST", body: JSON.stringify({ conversationId, messageId }) }).catch(() => null);
+  const data = res ? await res.json().catch(() => ({})) : {};
+  b.disabled = false;
+  if (!res || !res.ok) {
+    syncWatchButton(b);
+    bar.append(el("p", "watch-msg err", data.error || "Couldn't start watching. Please try again."));
+    return;
+  }
+  await loadWatches();
+  const msg = el("p", "watch-msg", `I'll re-check ${data.claims.length === 1 ? "this fact" : `these ${data.claims.length} facts`} every week and show you here if anything changes.`);
+  bar.append(msg);
+  if (me.emailAvailable && !me.email) bar.append(emailOffer());
+  else if (me.email && me.emailNotify) msg.append(` I'll also email ${me.email}.`);
+}
+
+// Email is offered at the moment it's useful, never demanded: a magic link, no password.
+function emailOffer() {
+  const f = el("form", "email-offer");
+  const label = el("label", "", "Email me when it changes");
+  const id = `email-${Math.random().toString(36).slice(2, 8)}`;
+  label.htmlFor = id;
+  const input = el("input");
+  input.type = "email";
+  input.id = id;
+  input.required = true;
+  input.autocomplete = "email";
+  input.placeholder = "you@example.com";
+  const go = el("button", "", "Send link");
+  go.type = "submit";
+  const out = el("p", "hint");
+  out.setAttribute("role", "status");
+  const row = el("div", "email-row");
+  row.append(input, go);
+  f.append(label, row, out);
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    go.disabled = true;
+    const res = await fetch("/api/email/start", { method: "POST", body: JSON.stringify({ email: input.value }) }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
+    go.disabled = false;
+    if (res && res.ok) {
+      row.remove();
+      out.textContent = `Check your inbox at ${input.value}, and open the link in this browser. It works for 30 minutes.`;
+    } else {
+      out.textContent = data.error || "Couldn't send the email. Please try again.";
+    }
+  });
+  return f;
+}
+
+// The watch panel: what is watched, the last check (then vs now, with the source), pause and delete.
+async function openWatch(id) {
+  const res = await fetch(`/api/watches/${encodeURIComponent(id)}`).catch(() => null);
+  if (!res || !res.ok) return;
+  const w = await res.json();
+  openWatchId = id;
+  renderWatchDialog(w);
+  if (!watchDialog.open) watchDialog.showModal();
+  setNav(false);
+  if (w.unseenChange) {
+    await fetch(`/api/watches/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ seen: true }) }).catch(() => null);
+    loadWatches();
+  }
+}
+
+function renderWatchDialog(w) {
+  $("watch-title").textContent = w.title;
+  const body = $("watch-body");
+  body.textContent = "";
+  const when = w.status === "paused" ? "Paused. Resume to re-check it again." : `Re-checked every ${w.everyDays === 7 ? "week" : `${w.everyDays} days`}. Next check ${shortDate(w.nextCheckAt)}.`;
+  body.append(el("p", "hint", when));
+
+  const last = w.checks?.[0];
+  body.append(el("p", "dlg-sec", last ? `Last check · ${shortDate(last.checkedAt)}` : "Last check"));
+  if (!last) {
+    body.append(el("p", "hint", "Not checked yet."));
+  } else if (last.outcome === "error") {
+    body.append(el("p", "hint", "That check didn't finish (the model or search was busy). It will try again tomorrow."));
+  } else {
+    const changed = last.items.filter((i) => i.verdict === "changed").length;
+    const same = last.items.filter((i) => i.verdict === "unchanged").length;
+    body.append(el("p", "check-sum", changed ? `${changed} of ${last.items.length} changed.` : same === last.items.length ? "Nothing changed." : `Nothing changed that I could confirm (${same} of ${last.items.length} checked).`));
+    const list = el("ul", "check-list");
+    const order = { changed: 0, unchanged: 1, couldnt_verify: 2, no_baseline: 3 };
+    for (const item of [...last.items].sort((a, b) => (order[a.verdict] ?? 9) - (order[b.verdict] ?? 9))) {
+      const li = el("li");
+      const head = el("div", "check-head");
+      head.append(el("span", "check-name", `${item.entity}, ${item.attribute}`), badge(item.verdict));
+      li.append(head);
+      const then = el("div", "check-line");
+      then.append(el("span", "check-k", "Then"), el("span", "", item.baseline ? `${item.baseline.valueText} (${shortDate(item.baseline.assertedAt)})` : "–"));
+      const now = el("div", "check-line");
+      now.append(el("span", "check-k", "Now"), el("span", "", item.current?.valueText ?? "Not found in today's sources"));
+      li.append(then, now);
+      const src = item.current?.url && httpUrl(item.current.url);
+      if (src) {
+        const line = el("div", "check-line");
+        const a = el("a", "src", src.hostname.replace(/^www\./, ""));
+        a.href = src.href;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.title = src.href;
+        line.append(el("span", "check-k", "Source"), a);
+        li.append(line);
+      }
+      if (item.reason && item.verdict !== "changed") li.append(el("p", "hint", item.reason));
+      list.append(li);
+    }
+    body.append(list);
+  }
+
+  body.append(el("p", "dlg-sec", "What's watched"));
+  const facts = el("ul", "check-list");
+  for (const c of w.claims) facts.append(el("li", "", `${c.entity}, ${c.attribute}: ${c.valueText} (as of ${shortDate(c.assertedAt)})`));
+  body.append(facts);
+  $("watch-pause").textContent = w.status === "paused" ? "Resume" : "Pause";
+  $("watch-chat").hidden = !w.conversationId;
+  $("watch-chat").dataset.conv = w.conversationId || "";
+}
+
+// Your profile: the memory switch and, when the server can send email, the address.
+function renderSettings() {
+  const sw = $("memory-switch");
+  sw.setAttribute("aria-checked", String(me.memoryOn !== false));
+  $("memory-state").textContent = me.memoryOn !== false ? "On" : "Off";
+  const sec = $("email-section");
+  sec.hidden = !me.emailAvailable;
+  $("email-none").hidden = Boolean(me.email);
+  $("email-set").hidden = !me.email;
+  $("email-addr").textContent = me.email || "";
+  $("email-notify").checked = Boolean(me.emailNotify);
+}
+
+async function saveMe(patch) {
+  const res = await fetch("/api/me", { method: "PUT", body: JSON.stringify(patch) }).catch(() => null);
+  if (res && res.ok) me = await res.json();
+  renderSettings();
 }
 
 // ---- wiring ------------------------------------------------------------------------------
@@ -646,10 +893,44 @@ about.addEventListener("click", (e) => {
 dialog.addEventListener("click", (e) => {
   if (e.target === dialog) dialog.close(); // a click on the dimmed backdrop closes it
 });
+$("watch-close").addEventListener("click", () => watchDialog.close());
+watchDialog.addEventListener("click", (e) => {
+  if (e.target === watchDialog) watchDialog.close();
+});
+$("watch-pause").addEventListener("click", async () => {
+  const w = watches.find((x) => x.id === openWatchId);
+  const status = w?.status === "paused" ? "active" : "paused";
+  const res = await fetch(`/api/watches/${encodeURIComponent(openWatchId)}`, { method: "PATCH", body: JSON.stringify({ status }) }).catch(() => null);
+  if (res && res.ok) renderWatchDialog(await res.json());
+  loadWatches();
+});
+$("watch-delete").addEventListener("click", async () => {
+  if (!confirm("Stop watching this and delete its check history?")) return;
+  await fetch(`/api/watches/${encodeURIComponent(openWatchId)}`, { method: "DELETE" }).catch(() => null);
+  watchDialog.close();
+  loadWatches();
+});
+$("watch-chat").addEventListener("click", () => {
+  watchDialog.close();
+  openConversation($("watch-chat").dataset.conv);
+});
+$("memory-switch").addEventListener("click", () => saveMe({ memoryOn: $("memory-switch").getAttribute("aria-checked") !== "true" }));
+$("email-notify").addEventListener("change", () => saveMe({ emailNotify: $("email-notify").checked }));
+$("email-remove").addEventListener("click", async () => {
+  if (!confirm("Remove your email from Neko? Change emails stop, and you can't sign in with it on another device.")) return;
+  await fetch("/api/email", { method: "DELETE" }).catch(() => null);
+  loadMe();
+});
+$("profile-email-start").addEventListener("click", () => {
+  const holder = $("email-none");
+  if (!holder.querySelector(".email-offer")) holder.append(emailOffer());
+  holder.querySelector("input")?.focus();
+});
 $("profile-clear").addEventListener("click", async () => {
-  if (!confirm("Forget everything I know about you? This can't be undone.")) return;
+  if (!confirm("Forget everything I know about you, including your email address? This can't be undone.")) return;
   await fetch("/api/profile", { method: "DELETE" });
   await loadProfile();
+  loadMe(); // the email goes too
 });
 // Starter prompts on the landing screen: one click sends a fixed, known prompt (never page-supplied text).
 for (const b of document.querySelectorAll(".starter")) b.addEventListener("click", () => submit(b.dataset.prompt));
@@ -674,8 +955,13 @@ document.addEventListener("keydown", (e) => {
   applyTheme(themePref()); // marks the right button in the profile panel
   updateGreeting();
   updateProfileButton();
-  const id = window.location.hash.slice(1);
-  if (id) await openConversation(id);
+  const hash = window.location.hash.slice(1);
+  loadMe();
+  await loadWatches();
+  if (hash.startsWith("watch-")) {
+    setHash(); // a link from a change email: open that watch on the landing screen
+    openWatch(hash.slice(6));
+  } else if (hash) await openConversation(hash);
   loadHistory();
   loadProfile();
 })();

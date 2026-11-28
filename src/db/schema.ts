@@ -76,4 +76,56 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX message_embeddings_user ON message_embeddings (user_id);
   `,
+  // 4: "Watch this" (scheduled re-checks of an answer's facts), optional email, and the memory switch.
+  // A user's email is stored only once they confirm it from a link; until then it lives only on the token.
+  `
+  ALTER TABLE users ADD COLUMN memory_on boolean NOT NULL DEFAULT true;
+  ALTER TABLE users ADD COLUMN email text;
+  ALTER TABLE users ADD COLUMN email_notify boolean NOT NULL DEFAULT false;
+  ALTER TABLE users ADD COLUMN unsubscribe_token text;
+  CREATE UNIQUE INDEX users_email ON users (lower(email)) WHERE email IS NOT NULL;
+
+  CREATE TABLE watches (
+    id              text PRIMARY KEY,
+    user_id         text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    conversation_id text REFERENCES conversations(id) ON DELETE SET NULL,
+    message_id      text REFERENCES messages(id) ON DELETE SET NULL,
+    title           text NOT NULL,
+    claims          jsonb NOT NULL,            -- the baseline: Claim[], verified quotes from Neko's own answer
+    status          text NOT NULL CHECK (status IN ('active', 'paused')),
+    every_days      integer NOT NULL DEFAULT 7,
+    created_at      timestamptz NOT NULL,
+    next_check_at   timestamptz NOT NULL,
+    last_checked_at timestamptz,
+    last_outcome    text,                      -- changed | unchanged | couldnt_verify | error
+    changed_at      timestamptz,               -- the last real Changed verdict
+    unseen_change   boolean NOT NULL DEFAULT false,
+    UNIQUE (user_id, message_id)
+  );
+  CREATE INDEX watches_due ON watches (next_check_at) WHERE status = 'active';
+  CREATE INDEX watches_user ON watches (user_id);
+
+  CREATE TABLE watch_checks (
+    id         text PRIMARY KEY,
+    watch_id   text NOT NULL REFERENCES watches(id) ON DELETE CASCADE,
+    user_id    text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    checked_at timestamptz NOT NULL,
+    outcome    text NOT NULL,
+    items      jsonb NOT NULL DEFAULT '[]',    -- DiffItem[]: verdicts computed by code
+    searches   jsonb NOT NULL DEFAULT '[]',
+    error      text
+  );
+  CREATE INDEX watch_checks_watch ON watch_checks (watch_id, checked_at DESC);
+  CREATE INDEX watch_checks_at ON watch_checks (checked_at);
+
+  CREATE TABLE email_tokens (
+    token_hash text PRIMARY KEY,               -- sha256 of the token; the token itself is only ever in the email
+    user_id    text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email      text NOT NULL,
+    created_at timestamptz NOT NULL,
+    expires_at timestamptz NOT NULL,
+    used_at    timestamptz
+  );
+  CREATE INDEX email_tokens_user ON email_tokens (user_id);
+  `,
 ];

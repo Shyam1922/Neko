@@ -11,6 +11,11 @@ export interface Config {
   modelTimeoutMs: number; // how long to wait for the model to answer before showing an error
   limits: Limits;
   embedModel: string | null; // null = embeddings off: recall by keywords only
+  cronSecret?: string; // protects POST /api/cron/recheck; unset = re-checks only via `npm run recheck`
+  email?: { apiKey: string; from: string }; // Resend; unset = no email anywhere in the app
+  emailLog: boolean; // local only: print emails to the log instead of sending (when Resend isn't set)
+  publicUrl: string; // the site's address, for links in emails
+  recheckBatch: number; // most watches re-checked per cron call
 }
 
 // On by default, so a deploy that forgets to set them is still protected. 0 turns a limit off.
@@ -50,8 +55,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!Number.isFinite(seconds) || seconds < 5 || seconds > 600) {
     throw new ConfigError(`MODEL_TIMEOUT_SECONDS must be a number from 5 to 600, got "${env.MODEL_TIMEOUT_SECONDS}".`);
   }
+  const cronSecret = env.CRON_SECRET?.trim() || undefined;
+  if (cronSecret && cronSecret.length < 24) throw new ConfigError("CRON_SECRET must be at least 24 characters (try: openssl rand -hex 32).");
+  const resendKey = env.RESEND_API_KEY?.trim();
+  const from = env.EMAIL_FROM?.trim();
+  const publicUrl = (env.PUBLIC_URL?.trim() || env.RENDER_EXTERNAL_URL?.trim() || `http://localhost:${port}`).replace(/\/+$/, "");
   return {
     geminiApiKey,
+    cronSecret,
+    email: resendKey && from ? { apiKey: resendKey, from } : undefined,
+    emailLog: /^(1|true|yes)$/i.test(env.EMAIL_LOG?.trim() ?? ""),
+    publicUrl,
+    recheckBatch: count(env, "RECHECK_BATCH", 5),
     model: env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
     port,
     dataDir: env.DATA_DIR?.trim() || "data",

@@ -117,6 +117,16 @@ Neko remembers what you tell it about yourself and uses it to tailor answers:
 
 How it stays trustworthy: nothing is inferred. The router that already reads each message proposes facts you stated, and code keeps one only if it is a **verbatim quote** from your message, is short, and does not look like a secret, an email or an ID number (passwords, API keys, card or phone numbers and health details are never stored). That costs **no extra model call**. Facts live in the `profile_facts` table, one row per fact, with the message it came from; a newer statement replaces an older one for the same key.
 
+## Watch
+
+Under any answer that searched the web there is **Watch this**. Neko keeps the facts from that answer (the same verified claims a then-vs-now check uses) and re-checks them every week. Code decides each verdict, as in the chat. You only hear about a watch when a fact really **Changed**; "Couldn't verify" is never reported as a change. After a change, the new value becomes the baseline, so the same change is reported once.
+
+- **In the app.** The sidebar's **Watching** section lists your watches. A changed one gets a **Changed** badge, and on a phone a dot on the menu button. Open it to see then vs now for each fact, with the source, and to pause or delete it. Up to 10 watches per person.
+- **By email, optional.** When the server has email set up, Neko offers **Email me when it changes** after you add a watch. You get a sign-in link, not a password, and your address is stored only after you open it in the same browser. Every email has a one-click unsubscribe. The same address also signs you in on another device, with the same chats and watches. **Forget everything** removes the address.
+- **How re-checks run.** Render's free service sleeps, so a timer inside the app can't be trusted. Instead, [a GitHub Actions job](.github/workflows/recheck.yml) calls `POST /api/cron/recheck` once a day with a shared secret. Each call checks a small batch of due watches, and never more than today's quota has left: `TURNS_PER_DAY` counts chat messages and re-checks together. Locally, `npm run recheck` does the same. `npm run recheck -- --all --fixture scripts/fixtures/neon-price-changed.json --print-email` makes a watched Neon price "change" on purpose, for trying the whole flow.
+
+**Memory switch.** Your profile has a **Memory** switch. When it is off, Neko doesn't save anything new about you and doesn't use what's saved. Saved facts stay until you delete them.
+
 ## Run it
 
 You need a recent Node.js (developed and tested on Node 24; there is no build step).
@@ -148,6 +158,12 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | `DATABASE_URL` | no | | A Postgres server, e.g. `postgres://user:pass@host:5432/neko`. Unset: an embedded Postgres in `DATA_DIR` |
 | `DATA_DIR` | no | `data` | Where the embedded database lives (`data/pglite`) when `DATABASE_URL` is unset |
 | `EMBED_MODEL` | no | `gemini-embedding-001` | Embedding model for finding chats by meaning; `off` = keywords only |
+| `CRON_SECRET` | no | | Turns on `POST /api/cron/recheck` for the daily re-check of watches; at least 24 characters (`openssl rand -hex 32`). Put the same value in the GitHub repository secret `CRON_SECRET`. Unset: re-checks run only through `npm run recheck` |
+| `RECHECK_BATCH` | no | `5` | The most watches re-checked per call |
+| `RESEND_API_KEY` | no | | [Resend](https://resend.com) API key, for change emails and sign-in links. Unset: Neko never offers email |
+| `EMAIL_FROM` | no | | The verified sender, e.g. `Neko <neko@yourdomain.com>`. Email is on only when this and `RESEND_API_KEY` are both set |
+| `PUBLIC_URL` | no | Render's own URL, else `http://localhost:PORT` | The site's address, used in links inside emails |
+| `EMAIL_LOG` | no | `false` | Local only: print emails (sign-in links included) to the server log instead of sending them. Never on a deployed server |
 
 ### Commands
 
@@ -157,6 +173,7 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 | `npm test` | Unit tests (no network, key or database server needed; set `TEST_DATABASE_URL` to run them against a real Postgres) |
 | `npm run eval` | The eval scorecard (needs the key; about 5 minutes on a free key) |
 | `npm run stats` | Usage from the database: people who sent a message, returning people, answers, median and p90 answer time, per day. Set `DATABASE_URL` for a deployed database |
+| `npm run recheck` | Re-checks due watches now, like the daily cron call (`--all` for every active watch, `--fixture <file>` for fixed search results, `--print-email` to print emails instead of sending). With the embedded database, stop the server first |
 | `npm run import:json` | Copies chats and profile facts saved by older versions (`data/*.json`) into the database. Stop the server first |
 | `npm run typecheck` | TypeScript check |
 | `npm run ping:model` | One tiny model call with timings; tells key/network problems apart from app problems |
@@ -171,7 +188,7 @@ Get a free Gemini key at <https://aistudio.google.com/apikey>. Search needs **no
 
 Everything is stored in **Postgres**: `users`, `conversations`, `messages` and `profile_facts` (schema in [src/db/schema.ts](src/db/schema.ts)). With `DATABASE_URL` set, Neko uses that server. Without it, Neko runs an embedded Postgres ([PGlite](https://pglite.dev), Postgres compiled to WebAssembly) in `data/pglite`, so local use still needs no setup. Both run the same SQL.
 
-There is no sign-up. The first message you send creates an anonymous account and stores its random id in an HttpOnly cookie. Every query filters on that id, so people sharing one server never see each other's chats or profile. Clearing your cookies starts a fresh, empty account.
+There is no sign-up. The first message you send creates an anonymous account and stores its random id in an HttpOnly cookie. An email is optional and only ever added from a link you open (see [Watch](#watch)). Every query filters on that id, so people sharing one server never see each other's chats or profile. Clearing your cookies starts a fresh, empty account.
 
 In the sidebar, hover a chat to **rename** or **delete** it. Deleting a chat removes its messages; facts it taught Neko stay in your profile until you remove them there.
 
@@ -208,6 +225,8 @@ src/
     personalize.ts     which proposed facts are kept (verbatim quote, no secrets) and how the model sees them
     claims.ts          old answers -> verified claims
     compare.ts         then vs now: verification and verdicts, in code
+    check.ts           re-check stored claims: search, read, compare (shared by the chat and by watches)
+    recheck.ts         the scheduled re-check of watches: batch, quota, verdict rule, change email
     research.ts        bounded search loop (2 searches per turn)
     prompt.ts          system prompt
   memory/
@@ -217,8 +236,11 @@ src/
     recall.ts          find the conversation you mean: dates first, then keywords + meaning
     semantic.ts        embeds messages in the background; per-user similarity search (pgvector)
     profile.ts         the facts you told Neko about yourself (viewable, editable)
+    watches.ts         "Watch this": watched facts, their checks, the per-user cap
+    account.ts         memory switch, optional email: sign-in links (hashed, single use), unsubscribe
 public/                the chat page: landing, answer cards, verdict badges, history (no build step; light and dark themes)
-scripts/               ping-model, check-models, probe-search, import-json, stats
+scripts/               ping-model, check-models, probe-search, import-json, stats, recheck (+ a fixture)
+.github/workflows/     recheck.yml: the daily call that re-checks watches
 Dockerfile, docker-compose.yml, render.yaml    container, local stack, Render blueprint
 eval/                  eval fixtures, runner and scoring (npm run eval); results per model
 test/                  unit tests with fake models, a fake search and a fake embedder
@@ -226,4 +248,4 @@ test/                  unit tests with fake models, a fake search and a fake emb
 
 ## Limits
 
-The eval set is small (about 60 judged items, one made-up user), so one case moves recall by about 4 points. Search turns take roughly 11 to 22 seconds on the free tier. A chat is titled by its first message until you rename it. Accounts are anonymous and tied to one browser. See the *Known limits* section of [DESIGN.md](DESIGN.md) for the full list.
+The eval set is small (about 60 judged items, one made-up user), so one case moves recall by about 4 points. Search turns take roughly 11 to 22 seconds on the free tier. A chat is titled by its first message until you rename it. Accounts are anonymous and tied to one browser unless you add an email. Watches are re-checked about once a week, on the daily run after they fall due, so a change can take up to a day longer to show. See the *Known limits* section of [DESIGN.md](DESIGN.md) for the full list.
