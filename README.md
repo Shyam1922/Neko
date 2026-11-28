@@ -4,6 +4,8 @@
 
 **Live demo: <https://neko-qt6g.onrender.com>** · no sign-up · the first load can take a minute while the free server wakes up
 
+Designed and built solo by [Shyam](https://github.com/Shyam1922): agent design, retrieval, evals, backend and deployment.
+
 ![Neko in use: asking what changed since an earlier chat, with verdict badges and sources](docs/demo.gif)
 
 | | |
