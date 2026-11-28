@@ -30,10 +30,10 @@
     </aside>
     <div id="scrim"></div>
 
-    <section id="main" class="empty">
+    <main id="main" class="empty">
       <header id="topbar">
-        <button id="menu" type="button" aria-label="Show chat history">☰</button>
-        <div id="chat-title"></div>
+        <button id="menu" type="button" aria-label="Show chat history" aria-controls="sidebar" aria-expanded="false">☰</button>
+        <h1 id="chat-title"></h1>
         <button id="open-about-top" type="button" class="pill-btn" aria-label="What can Neko do?" title="See what Neko can do">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M10 3l1.9 5.4L17.3 10l-5.4 1.9L10 17.3 8.1 11.9 2.7 10l5.4-1.6L10 3z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"/></svg>
           <span>What can Neko do?</span>
@@ -49,19 +49,34 @@
 
       <div id="landing">
         <p id="greeting" class="eyebrow">Hello</p>
-        <h1>What can I look into for you?</h1>
-        <p class="sub">Research with live sources, and pick up right where you left off.</p>
+        <h1>Ask once. I'll keep track of what changes.</h1>
+        <p class="sub">I look things up in live sources, remember what I told you, and re-check it later so you can see what moved.</p>
       </div>
 
-      <main id="log" aria-live="polite"></main>
+      <div id="log" role="log" aria-live="polite" aria-label="Conversation"></div>
 
       <form id="form">
+        <label for="input" class="sr-only">Message Neko</label>
         <textarea id="input" rows="1" placeholder="Ask anything…" autofocus></textarea>
-        <button id="send" type="submit" aria-label="Send">Send</button>
+        <button id="send" type="submit">Send</button>
       </form>
+      <div id="starters" role="group" aria-label="Try one of these">
+        <button type="button" class="starter" data-prompt="What does Spotify Premium cost in the US right now?">
+          <span class="st-q">What does Spotify Premium cost in the US right now?</span>
+          <span class="st-hint">Checks live prices. Later, ask "has it changed since?"</span>
+        </button>
+        <button type="button" class="starter" data-prompt="What did we talk about last time?">
+          <span class="st-q">What did we talk about last time?</span>
+          <span class="st-hint">Finds an earlier chat by day or topic</span>
+        </button>
+        <button type="button" class="starter" data-prompt="I prefer short answers with bullet points.">
+          <span class="st-q">I prefer short answers with bullet points.</span>
+          <span class="st-hint">Remembered in Your profile, where you can edit it</span>
+        </button>
+      </div>
       <p id="status-line"></p>
       <button id="open-about" type="button" class="link-btn">What can Neko do?</button>
-    </section>
+    </main>
   </div>
 
   <dialog id="about-dialog" aria-labelledby="about-title">
@@ -92,8 +107,8 @@
         <p>If it has no record of something, or can't confirm it, it tells you instead of guessing.</p>
       </li>
       <li>
-        <h3>Keeps your data with you</h3>
-        <p>Your chats and profile are stored on this computer. Only the questions sent to the model and to search leave it.</p>
+        <h3>Is clear about where your data lives</h3>
+        <p>Your chats and profile are stored on Neko's server, under an anonymous account tied to this browser. There's no sign-up and no email. You can delete any chat from the list, or clear your profile with Forget everything, at any time. To answer, your messages go to the AI model, and only search queries go to web search.</p>
       </li>
     </ul>
   </dialog>

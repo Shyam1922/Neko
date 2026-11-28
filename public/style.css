@@ -8,6 +8,7 @@
   --b-unv-bg: #dde3df; --b-unv-fg: #3f4d46; --b-none-bg: #d6e2ea; --b-none-fg: #26414f;
   --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --focus: #a8512f; /* focus ring: 3:1 or more against every light surface */
   --r: 8px;
 }
 :root[data-theme="dark"] {
@@ -16,10 +17,14 @@
   --accent: #d98a6c; --accent-fg: #141a17; --link: #e8a58a; --user: #3a5046; --user-fg: #f2f5f3; --err: #f2998e;
   --b-changed-bg: #4a2e1f; --b-changed-fg: #f2b79b; --b-same-bg: #1f3a2c; --b-same-fg: #a7e3bd;
   --b-unv-bg: #26302b; --b-unv-fg: #b4c2ba; --b-none-bg: #1c2f3b; --b-none-fg: #9cc9e0;
+  --focus: #e8a58a;
 }
 * { box-sizing: border-box; }
 body { margin: 0; height: 100vh; background: var(--bg); color: var(--fg); font: 15px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; cursor: pointer; }
+/* Keyboard focus: one clear ring on every control, in both themes (WCAG 2.4.7). Mouse clicks don't show it. */
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 #app { display: flex; height: 100%; }
 
 /* ---- sidebar ---- */
@@ -43,14 +48,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .row-action:hover { color: var(--fg); background: var(--line); }
 .row:hover .row-action, .row:focus-within .row-action, .row.active .row-action { display: block; }
 @media (hover: none) { .row-action { display: block; } }
-.rename { flex: 1; min-width: 0; font: inherit; font-size: 13.5px; padding: 6px 9px; border: 1px solid var(--accent); border-radius: var(--r); background: var(--card); color: var(--fg); outline: none; }
+.rename { flex: 1; min-width: 0; font: inherit; font-size: 13.5px; padding: 6px 9px; border: 1px solid var(--accent); border-radius: var(--r); background: var(--card); color: var(--fg); }
 .empty-note { color: var(--muted); font-size: 13px; padding: 8px 10px; }
 
 /* ---- main column ---- */
 #main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; height: 100%; }
 #topbar { width: 100%; flex: none; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
 #menu { display: none; border: 0; background: transparent; font-size: 20px; padding: 2px 8px; }
-#chat-title { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#chat-title { flex: 1; min-width: 0; margin: 0; font-weight: 600; font-size: 14px; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #open-profile { display: flex; align-items: center; gap: 9px; border: 0; background: transparent; padding: 4px 6px 4px 10px; border-radius: var(--r); }
 #open-profile:hover { background: var(--hover); }
 .who { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
@@ -65,21 +70,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 #log { flex: 1; overflow-y: auto; width: 100%; max-width: 780px; padding: 18px 20px 12px; order: 1; }
 #form { order: 2; width: min(780px, calc(100% - 40px)); margin: 0 auto 6px; display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); }
-#form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
-textarea { flex: 1; resize: none; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; max-height: 180px; padding: 6px 0; }
+#form:focus-within { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+#form textarea:focus-visible { outline: none; } /* the whole box shows the ring instead */
+textarea { flex: 1; resize: none; border: 0; background: transparent; color: var(--fg); font: inherit; max-height: 180px; padding: 6px 0; }
 textarea::placeholder { color: var(--muted); }
 #send { border: 0; border-radius: var(--r); background: var(--accent); color: var(--accent-fg); font-weight: 600; padding: 8px 16px; }
 #send:disabled { opacity: 0.45; cursor: default; }
-#status-line { order: 3; display: none; width: min(680px, calc(100% - 40px)); margin: 10px 0 0; font: 12px var(--mono); color: var(--muted); }
+#status-line { order: 4; display: none; width: min(680px, calc(100% - 40px)); margin: 10px 0 0; font: 12px var(--mono); color: var(--muted); }
 
 #main.empty { justify-content: center; }
 #main.empty #topbar { position: absolute; top: 0; left: 0; right: 0; background: transparent; border-bottom-color: transparent; }
 #main.empty #chat-title { visibility: hidden; } /* keeps its space, so the buttons stay at the right */
 #main.empty #landing { display: block; }
 #main.empty #status-line { display: block; }
+#main.empty #starters { display: grid; }
 #main.empty #log { display: none; }
 #main.empty #form { width: min(680px, calc(100% - 40px)); }
 #main:not(.empty) #form { margin-bottom: 16px; }
+
+/* ---- starter prompts: one click sends; each shows a different thing Neko does ---- */
+#starters { order: 3; display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: min(680px, calc(100% - 40px)); margin: 12px 0 0; }
+.starter { display: flex; flex-direction: column; gap: 4px; min-height: 44px; padding: 10px 12px; text-align: left; border: 1px solid var(--line); border-radius: var(--r); background: transparent; }
+.starter:hover { background: var(--card); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.st-q { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.st-hint { font-size: 12px; line-height: 1.4; color: var(--muted); }
 
 /* ---- messages: your question is a bubble on the right; the answer is a card with its evidence underneath ---- */
 .day { text-align: center; color: var(--muted); font: 12px var(--mono); margin: 16px 0 12px; }
@@ -116,7 +130,7 @@ textarea::placeholder { color: var(--muted); }
 .features h3 { margin: 0 0 3px; font-size: 14.5px; font-weight: 600; }
 .features p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
 .features .badge { font-size: 11px; margin-right: 2px; }
-.link-btn { order: 4; display: none; width: min(680px, calc(100% - 40px)); margin: 8px 0 0; padding: 0; border: 0; background: transparent; color: var(--link); font-size: 13.5px; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.link-btn { order: 5; display: none; width: min(680px, calc(100% - 40px)); margin: 8px 0 0; padding: 0; border: 0; background: transparent; color: var(--link); font-size: 13.5px; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 #main.empty .link-btn { display: block; }
 /* the "What can Neko do?" pill in the top bar: a soft accent tint and a sparkle, so it invites a click */
 .pill-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 10px; border-radius: var(--r); border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--fg); font-size: 13px; font-weight: 600; white-space: nowrap; }
@@ -136,7 +150,7 @@ textarea::placeholder { color: var(--muted); }
 .pf-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
 .pf-key { width: 110px; flex: none; font-size: 13px; color: var(--muted); }
 .pf-row input { flex: 1; min-width: 0; border: 1px solid transparent; border-radius: 6px; padding: 6px 8px; background: transparent; color: var(--fg); font: inherit; }
-.pf-row input:hover, .pf-row input:focus { border-color: var(--line); outline: 0; }
+.pf-row input:hover, .pf-row input:focus { border-color: var(--line); }
 .pf-del { border: 0; background: transparent; color: var(--muted); font-size: 18px; padding: 0 6px; }
 .pf-del:hover { color: var(--err); }
 .dlg-foot { margin-top: 14px; text-align: right; }
@@ -146,12 +160,34 @@ textarea::placeholder { color: var(--muted); }
 /* ---- phones: the chat list slides over the page ---- */
 #scrim { display: none; }
 @media (max-width: 760px) {
-  #sidebar { position: fixed; z-index: 3; inset: 0 auto 0 0; transform: translateX(-100%); transition: transform 0.2s; }
-  .nav-open #sidebar { transform: none; }
+  /* The drawer sits fully off-screen when closed (and out of the tab order), and fully on-screen when open. */
+  #sidebar { position: fixed; z-index: 3; top: 0; bottom: 0; left: 0; width: min(300px, 86vw); padding-left: max(12px, env(safe-area-inset-left)); overflow-y: auto;
+    transform: translateX(-100%); visibility: hidden; transition: transform 0.2s, visibility 0s 0.2s; }
+  .nav-open #sidebar { transform: none; visibility: visible; transition: transform 0.2s; }
   .nav-open #scrim { display: block; position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); z-index: 2; }
-  #menu { display: inline-block; }
-  #landing h1 { font-size: 28px; }
-  #who-sub { display: none; }
-  .pill-btn { padding: 0 8px; }
+
+  /* Touch targets: 44 px or more on a phone */
+  #topbar { height: 56px; gap: 6px; padding: 0 8px; }
+  #menu { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: var(--r); }
+  .pill-btn { width: 44px; height: 44px; padding: 0; justify-content: center; }
   .pill-btn span { display: none; } /* icon only on a phone */
+  #open-profile { min-width: 44px; min-height: 44px; padding: 7px; justify-content: center; }
+  .who { display: none; } /* avatar only, so the chat title gets the room */
+  #send { min-height: 44px; }
+  .link-btn { display: none; min-height: 44px; }
+  #main.empty .link-btn { display: flex; align-items: center; margin-top: 4px; }
+  #new-chat, #theme-seg button, #profile-clear { min-height: 44px; }
+  #profile-close, #about-close { min-width: 44px; min-height: 44px; }
+  .item { padding: 11px 10px; }
+  .row-action { width: 40px; height: 40px; padding: 11px; }
+  .pf-del { min-width: 44px; min-height: 44px; }
+
+  /* Landing: start at the top, not in the middle; the starters fill the space below the input */
+  #main.empty { justify-content: flex-start; overflow-y: auto; }
+  #main.empty #landing { margin-top: 80px; }
+  #landing h1 { font-size: 28px; }
+  #starters { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation: none !important; scroll-behavior: auto !important; }
 }

@@ -2,6 +2,16 @@
 
 A running log of what was chosen, what else was on the table, and why. Newest first.
 
+## 2026-11-28 · UX Phase 1: fixes and a first move for new visitors
+
+A UX audit (desktop and phone, measured accessibility, timed turns, a look at Perplexity and ChatGPT) produced a 3-phase roadmap. Phase 1 is the small, must-ship part:
+- **Truthful storage copy.** The help panel still said chats stay "on this computer"; since Postgres they live on Neko's server under an anonymous, cookie-tied account. It now says that, and how to delete them.
+- **Starter prompts.** Three one-click buttons on the landing screen, each showing a different capability: a live price lookup that invites "has it changed since?" later, a memory question, and a personal preference. The headline now leads with the product's angle: "Ask once. I'll keep track of what changes."
+- **Phones.** Every control is at least 44 px; the history drawer is a fixed `min(300px, 86vw)` and hidden from the tab order when closed; the header shows only the avatar so the chat title gets the room; the landing hero sits at the top.
+- **Keyboard and screen readers.** One `:focus-visible` ring in both themes (a darker clay in light mode, since the accent itself is under 3:1 on the background), a label on the message box, `aria-expanded` and Escape on the drawer, and a real `<main>` landmark with the chat title as the page's h1. `prefers-reduced-motion` turns transitions off.
+
+axe-core (WCAG 2.2 AA plus best practice) reports 0 issues on the landing screen, a chat, the drawer and both dialogs, at 1280 and 375 px, light and dark. The demo GIF still shows the old landing headline; re-record it when the model API is reachable.
+
 ## 2026-11-27 · Task 5: README, demo, and a bug the demo found
 
 **The README leads with proof.** A reviewer skims for about 30 seconds, so the first screen holds the pitch, the live link, a 20-second demo GIF, and a table of what was engineered, with numbers that link to how they were measured. Setup and configuration moved down.

@@ -427,7 +427,7 @@ function startNewChat() {
   setHash();
   setEmpty(true);
   renderHistory();
-  document.body.classList.remove("nav-open");
+  setNav(false);
   input.focus();
 }
 
@@ -442,7 +442,7 @@ async function openConversation(id) {
   setEmpty(conv.messages.length === 0);
   setHash(id);
   renderHistory();
-  document.body.classList.remove("nav-open");
+  setNav(false);
   log.scrollTop = log.scrollHeight;
 }
 
@@ -548,8 +548,23 @@ $("profile-clear").addEventListener("click", async () => {
   await fetch("/api/profile", { method: "DELETE" });
   await loadProfile();
 });
-$("menu").addEventListener("click", () => document.body.classList.add("nav-open"));
-$("scrim").addEventListener("click", () => document.body.classList.remove("nav-open"));
+// Starter prompts on the landing screen: one click sends a fixed, known prompt (never page-supplied text).
+for (const b of document.querySelectorAll(".starter")) b.addEventListener("click", () => submit(b.dataset.prompt));
+
+// Phone drawer: the menu button reports its state, and Escape or a tap on the scrim closes it.
+const setNav = (open) => {
+  document.body.classList.toggle("nav-open", open);
+  $("menu").setAttribute("aria-expanded", String(open));
+  if (open) $("new-chat").focus();
+};
+$("menu").addEventListener("click", () => setNav(true));
+$("scrim").addEventListener("click", () => setNav(false));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.body.classList.contains("nav-open")) {
+    setNav(false);
+    $("menu").focus();
+  }
+});
 
 // A reload (or a shared link with #<id>) reopens that chat; otherwise show the landing screen.
 (async function boot() {
